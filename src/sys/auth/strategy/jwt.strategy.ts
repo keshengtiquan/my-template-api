@@ -25,6 +25,9 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       where: {
         id,
       },
+      relations: {
+        roles: true,
+      },
     });
     delete user.password;
     return user;
