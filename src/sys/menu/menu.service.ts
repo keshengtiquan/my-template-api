@@ -7,11 +7,14 @@ import { Repository } from 'typeorm'
 import { ManagementGroup } from '../../enmus'
 import { User } from '../user/entities/user.entity'
 import { handleTree } from '../../utils'
+import { Tenant } from '../tenant/entities/tenant.entity'
 
 @Injectable()
 export class MenuService {
   @InjectRepository(Menu)
   private menuRepository: Repository<Menu>
+  @InjectRepository(Tenant)
+  private tenantRepository: Repository<Tenant>
 
   async create(createMenuDto: CreateMenuDto, userInfo: User) {
     const menu = new Menu()
@@ -49,13 +52,22 @@ export class MenuService {
    */
   async getMenu(conditions: string[], status: string[], userInfo: User) {
     //TODO 根据当前用户的租户角色查询
+    const queryBuilder = this.menuRepository
+      .createQueryBuilder('menu')
+      .where('menu.menuType in  (:...type)', { type: conditions })
+      .andWhere('menu.status in (:...status)', { status })
+      .orderBy('menu.menuSort', 'ASC')
+    if (userInfo.tenantId !== ManagementGroup.ID) {
+      const tenant = await this.tenantRepository.findOne({
+        where: { id: userInfo.tenantId },
+        relations: { packageId: true },
+      })
+      const menuIds = tenant.packageId.menuIds.split(',')
+      queryBuilder.andWhere('menu.id in (:...menuIds)', { menuIds })
+    }
+
     try {
-      const res = await this.menuRepository
-        .createQueryBuilder('menu')
-        .where('menu.menuType in  (:...type)', { type: conditions })
-        .andWhere('menu.status in (:...status)', { status })
-        .orderBy('menu.menuSort', 'ASC')
-        .getMany()
+      const res = await queryBuilder.getMany()
       return handleTree(res)
     } catch (e) {
       console.log(e)

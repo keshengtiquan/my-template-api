@@ -8,8 +8,7 @@ import { Result } from '../../common/result'
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
-  @Post()
-  @Auth('system:user:create')
+  @Post('/create')
   async create(@Body() createUserDto: CreateUserDto) {
     return Result.success(await this.userService.create(createUserDto), '添加用户成功')
   }

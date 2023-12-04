@@ -1,14 +1,15 @@
-import { Module } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { AuthModule } from './sys/auth/auth.module';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { UserModule } from './sys/user/user.module';
-import { GeneralEntitySubscriber } from './utils/typeorm-event-subscriber';
-import { JwtModule } from '@nestjs/jwt';
-import { RoleModule } from './sys/role/role.module';
-import { PackageModule } from './sys/package/package.module';
-import { MenuModule } from './sys/menu/menu.module';
-import { TenantModule } from './sys/tenant/tenant.module';
+import { Module } from '@nestjs/common'
+import { ConfigModule, ConfigService } from '@nestjs/config'
+import { AuthModule } from './sys/auth/auth.module'
+import { TypeOrmModule } from '@nestjs/typeorm'
+import { UserModule } from './sys/user/user.module'
+import { GeneralEntitySubscriber } from './utils/typeorm-event-subscriber'
+import { JwtModule } from '@nestjs/jwt'
+import { RoleModule } from './sys/role/role.module'
+import { PackageModule } from './sys/package/package.module'
+import { MenuModule } from './sys/menu/menu.module'
+import { TenantModule } from './sys/tenant/tenant.module'
+import { DeptModule } from './sys/dept/dept.module'
 
 @Module({
   imports: [
@@ -34,7 +35,7 @@ import { TenantModule } from './sys/tenant/tenant.module';
             authPlugin: 'sha256_password',
           },
           subscribers: [GeneralEntitySubscriber],
-        };
+        }
       },
       inject: [ConfigService],
     }),
@@ -44,9 +45,9 @@ import { TenantModule } from './sys/tenant/tenant.module';
         return {
           secret: configService.get('jwt_secret'),
           signOptions: {
-            expiresIn: '30m', // 默认 30 分钟
+            expiresIn: '1d', // 默认 30 分钟
           },
-        };
+        }
       },
       inject: [ConfigService],
     }),
@@ -56,6 +57,7 @@ import { TenantModule } from './sys/tenant/tenant.module';
     PackageModule,
     MenuModule,
     TenantModule,
+    DeptModule,
   ],
   controllers: [],
   providers: [],
