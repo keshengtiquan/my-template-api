@@ -6,6 +6,7 @@ import { Role } from './entities/role.entity'
 import { In, Repository } from 'typeorm'
 import { User } from '../user/entities/user.entity'
 import { Menu } from '../menu/entities/menu.entity'
+import { ManagementGroup } from '../../enmus'
 
 @Injectable()
 export class RoleService {
@@ -61,11 +62,15 @@ export class RoleService {
   async getList(current: number, pageSize: number, sortField: string, sortOrder: string, user: User) {
     const order = {}
     order[sortField] = sortOrder
+    const where = {}
+    if (user.tenantId !== ManagementGroup.ID) {
+      where['tenantId'] = user.tenantId
+    }
     try {
       const [data, total] = await this.roleRepository.findAndCount({
         skip: (current - 1) * pageSize,
         take: pageSize,
-        where: { tenantId: user.tenantId },
+        where: where,
         order: order,
       })
       return {

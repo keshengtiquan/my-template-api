@@ -54,8 +54,8 @@ export class Role {
   @Column({ type: 'varchar', length: 500, default: null, comment: '备注' })
   remark: string
 
-  @Column({ type: 'bigint', nullable: true, name: 'create_dept' })
-  createDept: number
+  @Column({ type: 'varchar', nullable: true, name: 'create_dept' })
+  createDept: string
 
   @JoinTable({
     name: 'sys_user_role',

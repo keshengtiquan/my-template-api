@@ -4,7 +4,7 @@ import { UpdateMenuDto } from './dto/update-menu.dto'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Menu } from './entities/menu.entity'
 import { Repository } from 'typeorm'
-import { ManagementGroup } from '../../enmus'
+import { ManagementGroup, UserType } from '../../enmus'
 import { User } from '../user/entities/user.entity'
 import { handleTree } from '../../utils'
 import { Tenant } from '../tenant/entities/tenant.entity'
@@ -64,6 +64,11 @@ export class MenuService {
       })
       const menuIds = tenant.packageId.menuIds.split(',')
       queryBuilder.andWhere('menu.id in (:...menuIds)', { menuIds })
+      if (userInfo.userType !== UserType.SYSUSER) {
+        const roleIds = userInfo.roles.map((item) => item.id)
+        queryBuilder.innerJoin('sys_menu_role', 'rm', 'menu.id = rm.menu_id')
+        queryBuilder.andWhere('rm.role_id in (:...roleIds)', { roleIds })
+      }
     }
 
     try {

@@ -14,8 +14,8 @@ export class User {
   })
   tenantId: string
 
-  @Column({ type: 'bigint', name: 'dept_id', default: null, comment: '部门ID' })
-  deptId: number
+  @Column({ type: 'varchar', name: 'dept_id', default: null, comment: '部门ID' })
+  deptId: string
 
   @Column({
     type: 'varchar',
@@ -76,8 +76,8 @@ export class User {
   @Column({ type: 'varchar', length: '500', default: 'null', comment: '备注' })
   remark: string
 
-  @Column({ type: 'bigint', nullable: true, name: 'create_dept' })
-  createDept: number
+  @Column({ type: 'varchar', nullable: true, name: 'create_dept' })
+  createDept: string
 
   @JoinTable({
     name: 'sys_user_role',
@@ -87,15 +87,15 @@ export class User {
   @ManyToMany(() => Role, (role) => role.users)
   roles: Role[]
 
-  @Column({ comment: '创建者', default: null })
-  create_by: string
+  @Column({ nullable: true, length: 255, name: 'create_by' })
+  createBy: string
 
-  @Column({ comment: '更新者', default: null })
-  update_by: string
+  @Column({ nullable: true, length: 255, name: 'update_by' })
+  updateBy: string
 
-  @CreateDateColumn()
-  create_time: Date
+  @CreateDateColumn({ name: 'create_time' })
+  createTime: Date
 
-  @UpdateDateColumn()
-  update_time: Date
+  @UpdateDateColumn({ name: 'update_time' })
+  updateTime: Date
 }
