@@ -12,4 +12,6 @@ async function bootstrap() {
   const configService = app.get(ConfigService)
   await app.listen(configService.get('nest_server_port'))
 }
-bootstrap()
+bootstrap().then(() => {
+  console.log(`启动成功`)
+})
