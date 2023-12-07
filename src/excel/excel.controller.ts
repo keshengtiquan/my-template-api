@@ -11,6 +11,7 @@ import {
 import { ExcelService } from './excel.service'
 import { FileInterceptor } from '@nestjs/platform-express'
 import { Express } from 'express'
+import { Result } from '../common/result'
 
 @Controller('excel')
 export class ExcelController {

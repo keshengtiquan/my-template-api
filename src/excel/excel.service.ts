@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import * as Excel from 'exceljs'
 import { Express } from 'express'
+import {escape} from "mysql2";
 
 @Injectable()
 export class ExcelService {
@@ -46,7 +47,12 @@ export class ExcelService {
     for (const worksheet of workbook.worksheets) {
       worksheetNames.push(worksheet.name)
     }
-    return worksheetNames
+    console.log(file)
+    //TODO 存入数据库
+    return {
+      sheetNames: worksheetNames,
+      fileName: decodeURIComponent(escape(file.originalname)),
+    }
   }
 
   /**
