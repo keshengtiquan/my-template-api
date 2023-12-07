@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import * as Excel from 'exceljs'
+import { Express } from 'express'
+
 @Injectable()
 export class ExcelService {
   /**
@@ -36,6 +38,21 @@ export class ExcelService {
     return rows
   }
 
+  async parseTemplate(file: Express.Multer.File) {
+    const workbook = new Excel.Workbook()
+    await workbook.xlsx.load(file.buffer)
+    const worksheetNames = []
+    //获取表格中所有的sheet名称
+    for (const worksheet of workbook.worksheets) {
+      worksheetNames.push(worksheet.name)
+    }
+    return worksheetNames
+  }
+
+  /**
+   * 处理列字段
+   * @param index
+   */
   columnIndexToColumnLetter(index: number): string {
     let columnLetter = ''
     while (index > 0) {
