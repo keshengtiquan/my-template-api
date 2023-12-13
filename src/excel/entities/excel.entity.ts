@@ -19,7 +19,7 @@ export class Excel {
   @Column({ type: 'varchar', length: '10', name: 'file_type', comment: '上传文件类型' })
   fileType: string
 
-  @Column({ type: 'varchar', length: '100', name: 'sheet_name', comment: '解析页签名称' })
+  @Column({ type: 'varchar', length: '100', name: 'sheet_name',  comment: '解析页签名称' })
   sheetName: string
 
   @Column({ type: 'int', comment: '从第几行开始解析', name: 'skip_rows' })

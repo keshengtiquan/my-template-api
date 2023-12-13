@@ -122,7 +122,9 @@ export class ExcelService {
       const rowData: Record<any, any> = {}
       for (const excelDataKey in excelData[i]) {
         const filedObj = importField.find((item) => item.col === excelDataKey)
-        rowData[filedObj.filed] = excelData[i][excelDataKey]
+        if (filedObj && filedObj.filed) {
+          rowData[filedObj.filed] = excelData[i][excelDataKey]
+        }
       }
       rowData.tenantId = userInfo.tenantId
       rowData.createBy = userInfo.userName
@@ -287,7 +289,8 @@ export class ExcelService {
     try {
       return await this.exportExcelRepository.save(exportExcel)
     } catch (e) {
-      throw new BadRequestException('创建导出模版成功')
+      console.log(e)
+      throw new BadRequestException('创建导出模版失败')
     }
   }
 
@@ -332,6 +335,7 @@ export class ExcelService {
         })
         data.push(obj)
       })
+      console.log(data)
       // 添加行
       if (data) worksheet.addRows(data)
 
@@ -348,6 +352,6 @@ export class ExcelService {
         })
       })
     }
-    return await workbook.xlsx.writeBuffer()
+    return await workbook.xlsx.writeFile('output.xlsx')
   }
 }

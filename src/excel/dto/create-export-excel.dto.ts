@@ -1,4 +1,4 @@
-import { IsNotEmpty } from 'class-validator'
+import {IsNotEmpty, IsOptional} from 'class-validator'
 
 export class CreateExportExcelDto {
   @IsNotEmpty({ message: '模版名称不能为空' })
@@ -9,6 +9,6 @@ export class CreateExportExcelDto {
   exportService: string
   @IsNotEmpty()
   exportFields: string
-  @IsNotEmpty()
+  @IsOptional()
   sheetName: string
 }

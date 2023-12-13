@@ -16,7 +16,7 @@ export class ExportExcel {
   @Column({ type: 'varchar', length: '64', name: 'template_name', comment: '文件名称' })
   templateName: string
 
-  @Column({ type: 'varchar', length: '64', name: 'sheet_name', comment: '页签名称' })
+  @Column({ type: 'varchar', length: '64',default: 'Sheet1', name: 'sheet_name', comment: '页签名称' })
   sheetName: string
 
   @Column({ type: 'varchar', length: '10', name: 'export_type', comment: '导出文件类型' })
