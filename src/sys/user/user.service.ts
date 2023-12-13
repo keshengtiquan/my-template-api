@@ -37,8 +37,8 @@ export class UserService {
     newUser.avatar = createUserDto.avatar
     newUser.createDept = userInfo.createDept
     newUser.remark = createUserDto.remark
-    newUser.createBy = userInfo.nickName
-    newUser.updateBy = userInfo.nickName
+    newUser.createBy = userInfo.userName
+    newUser.updateBy = userInfo.userName
     newUser.deptId = createUserDto.deptId
     newUser.tenantId = userInfo.tenantId
     newUser.roles = roles
@@ -162,7 +162,7 @@ export class UserService {
       updateUser.phoneNumber = updateUserDto.phoneNumber
       updateUser.gender = updateUserDto.gender
       updateUser.remark = updateUserDto.remark
-      updateUser.updateBy = userInfo.nickName
+      updateUser.updateBy = userInfo.userName
       updateUser.deptId = updateUserDto.deptId
       updateUser.roles = roles
       return await this.userRepository.save(updateUser)
@@ -192,7 +192,6 @@ export class UserService {
       await this.userRepository.save(deleteUser)
       return await this.userRepository.delete(id)
     } catch (e) {
-      console.log(e)
       throw new BadRequestException('删除用户失败')
     }
   }

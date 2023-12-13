@@ -41,8 +41,8 @@ export class RoleService {
     role.roleSort = createRoleDto.roleSort
     role.remark = createRoleDto.remark
     role.tenantId = userInfo.tenantId
-    role.createBy = userInfo.nickName
-    role.updateBy = userInfo.nickName
+    role.createBy = userInfo.userName
+    role.updateBy = userInfo.userName
     role.createDept = userInfo.deptId
     role.menus = menus
 
@@ -130,7 +130,7 @@ export class RoleService {
       role.roleKey = updateRoleDto.roleKey
       role.roleSort = updateRoleDto.roleSort
       role.remark = updateRoleDto.remark
-      role.updateBy = userInfo.nickName
+      role.updateBy = userInfo.userName
       role.menus = menus
       return await this.roleRepository.save(role)
     } catch (e) {

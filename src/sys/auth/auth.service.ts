@@ -5,6 +5,8 @@ import { Repository } from 'typeorm'
 import { LoginDto } from './dto/login.dto'
 import { md5 } from '../../utils'
 import { JwtService } from '@nestjs/jwt'
+import { ManagementGroup, Status } from '../../enmus'
+import { Tenant } from '../tenant/entities/tenant.entity'
 
 @Injectable()
 export class AuthService {
@@ -12,6 +14,8 @@ export class AuthService {
   private userRepository: Repository<User>
   @Inject(JwtService)
   private jwtService: JwtService
+  @InjectRepository(Tenant)
+  private tenantRepository: Repository<Tenant>
 
   async login(loginDto: LoginDto) {
     const user = await this.userRepository.findOne({
@@ -22,9 +26,20 @@ export class AuthService {
     if (!user) {
       throw new HttpException('用户不存在', HttpStatus.BAD_REQUEST)
     }
+    console.log(user)
 
     if (user.password !== md5(loginDto.password)) {
       throw new HttpException('密码错误', HttpStatus.BAD_REQUEST)
+    }
+    if (user.tenantId !== ManagementGroup.ID) {
+      const tenant = await this.tenantRepository.findOne({ where: { id: user.tenantId } })
+      if (tenant.status === Status.FORBIDDEN) {
+        throw new HttpException('租户被禁用,请联系管理员', HttpStatus.BAD_REQUEST)
+      }
+    }
+
+    if (user.status === Status.FORBIDDEN) {
+      throw new HttpException('用户被禁用,请联系管理员', HttpStatus.BAD_REQUEST)
     }
 
     return this.token(user)

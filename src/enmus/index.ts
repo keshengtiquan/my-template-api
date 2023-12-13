@@ -10,3 +10,12 @@ export enum Status {
 export enum UserType {
   SYSUSER = 'sys_user',
 }
+
+export enum ImportFileService {
+  PROJECTIMPORT = 'projectListImport',
+  WORKPLACEIMPORT = 'WorkPlaceImport',
+}
+
+export enum ExportFileService {
+  LISTEXPORT = 'ListExportService',
+}

@@ -1,48 +1,48 @@
-import { IsNotEmpty, IsOptional } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsNotEmpty, IsOptional } from 'class-validator'
+import { Type } from 'class-transformer'
 
 export class CreateMenuDto {
   @IsNotEmpty({ message: '菜单名称不能为空' })
-  title: string;
+  title: string
   @IsOptional()
-  icon: string;
+  icon: string
   @IsNotEmpty({ message: '路由地址不能为空' })
-  path: string;
+  path: string
   @IsOptional()
-  component: string;
+  component: string
   @IsOptional()
-  name: string;
+  name: string
   @IsOptional()
-  hideInMenu: boolean;
+  hideInMenu: boolean
   @IsOptional()
-  parentId: string;
+  parentId: string
   @IsOptional()
-  isIframe: boolean;
+  isIframe: boolean
   @IsOptional()
-  url: string;
+  url: string
   @IsOptional()
-  affix: boolean;
+  affix: boolean
   @IsOptional()
-  hideInBreadcrumb: boolean;
+  hideInBreadcrumb: boolean
   @IsOptional()
-  hideChildrenInMenu: boolean;
+  hideChildrenInMenu: boolean
   @IsOptional()
-  keepAlive: boolean;
+  keepAlive: boolean
   @IsOptional()
-  target: string;
+  target: string
   @IsOptional()
-  redirect: string;
+  redirect: string
   @IsNotEmpty({ message: '排序不能为空' })
   @Type(() => Number)
-  menuSort: number;
+  menuSort: number
   @IsOptional()
-  permission: string;
+  permission: string
   @IsOptional()
-  status: string;
+  status: string
   @IsOptional()
-  createBy: string;
+  createBy: string
   @IsOptional()
-  updateBy: string;
+  updateBy: string
   @IsNotEmpty({ message: '菜单类型不能为空' })
-  menuType: string;
+  menuType: string
 }

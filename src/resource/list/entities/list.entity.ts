@@ -2,7 +2,7 @@ import { Column, CreateDateColumn, Entity, PrimaryColumn, UpdateDateColumn } fro
 
 @Entity('sc_list')
 export class List {
-  @PrimaryColumn({ comment: '主键', name: 'id', type: 'bigint' })
+  @Column({ comment: '主键', name: 'id', type: 'bigint' })
   id: string
 
   @Column({
@@ -22,7 +22,7 @@ export class List {
   @Column({ type: 'int', nullable: true, name: 'serial_number' })
   serialNumber: number
 
-  @Column({ type: 'varchar', length: 64, name: 'list_code' })
+  @PrimaryColumn({ type: 'varchar', length: 64, name: 'list_code' })
   listCode: string
 
   @Column({ type: 'varchar', length: 64, name: 'list_name' })

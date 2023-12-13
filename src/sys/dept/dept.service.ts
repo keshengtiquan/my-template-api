@@ -24,8 +24,8 @@ export class DeptService {
     dept.parentId = createDeptDto.parentId
     dept.phone = createDeptDto.phone
     dept.tenantId = userInfo.tenantId
-    dept.createBy = userInfo.nickName
-    dept.updateBy = userInfo.nickName
+    dept.createBy = userInfo.userName
+    dept.updateBy = userInfo.userName
     try {
       return await this.deptRepository.save(dept)
     } catch (e) {
@@ -92,7 +92,7 @@ export class DeptService {
           leader: updateDeptDto.leader,
           parentId: updateDeptDto.parentId,
           phone: updateDeptDto.phone,
-          updateBy: userInfo.nickName,
+          updateBy: userInfo.userName,
         },
       )
     } catch (e) {

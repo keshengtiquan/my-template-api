@@ -63,7 +63,7 @@ export class TenantController {
   @Auth()
   async forbiddenTenant(@Body('id') id: string, @Body('status') status: string) {
     const data = await this.tenantService.forbidden(id, status)
-    return Result.success(data, status === '1' ? '启用成功' : '禁用成功')
+    return Result.success(data, status === '1' ? '禁用成功' : '启用成功')
   }
   /**
    * 查询租户

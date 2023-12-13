@@ -19,19 +19,22 @@ export class Excel {
   @Column({ type: 'varchar', length: '10', name: 'file_type', comment: '上传文件类型' })
   fileType: string
 
-  @Column({ type: 'varchar', length: '10', name: 'sheet_name', comment: '解析页签名称' })
+  @Column({ type: 'varchar', length: '100', name: 'sheet_name', comment: '解析页签名称' })
   sheetName: string
 
   @Column({ type: 'int', comment: '从第几行开始解析', name: 'skip_rows' })
   skipRows: number
 
-  @Column({ type: 'varchar', length: '10', name: 'service_name', comment: '服务名称' })
+  @Column({ type: 'varchar', length: '100', name: 'service_name', comment: '服务名称' })
   serviceName: string
 
-  @Column({ type: 'varchar', length: '5000', name: 'import_template', comment: '导入模版' })
+  @Column({ type: 'varchar', length: '125', name: 'import_template', comment: '导入模版名称' })
   importTemplate: string
 
-  @Column({ type: 'varchar', length: '5000', name: 'import_field', comment: '导入字段' })
+  @Column({ type: 'varchar', length: 5000, name: 'import_template_field', comment: '导入模版表头字段' })
+  importTemplateField: string
+
+  @Column({ type: 'varchar', length: 5000, name: 'import_field', comment: '导入字段' })
   importField: string
   //结束
 

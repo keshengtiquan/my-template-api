@@ -12,7 +12,8 @@ import { TenantModule } from './sys/tenant/tenant.module'
 import { DeptModule } from './sys/dept/dept.module'
 import { ListModule } from './resource/list/list.module'
 import { ExcelController } from './excel/excel.controller'
-import { ExcelModule } from './excel/excel.module';
+import { ExcelModule } from './excel/excel.module'
+import { WorkplaceModule } from './resource/workplace/workplace.module'
 
 @Module({
   imports: [
@@ -63,6 +64,7 @@ import { ExcelModule } from './excel/excel.module';
     DeptModule,
     ListModule,
     ExcelModule,
+    WorkplaceModule,
   ],
   controllers: [ExcelController],
   providers: [],

@@ -17,6 +17,14 @@ export class MenuService {
   private tenantRepository: Repository<Tenant>
 
   async create(createMenuDto: CreateMenuDto, userInfo: User) {
+    const findMenu = await this.menuRepository.findOne({
+      where: {
+        path: createMenuDto.path,
+      },
+    })
+    if (findMenu) {
+      return new BadRequestException('路由地址已存在')
+    }
     const menu = new Menu()
     menu.title = createMenuDto.title
     menu.icon = createMenuDto.icon
@@ -37,10 +45,13 @@ export class MenuService {
     menu.permission = createMenuDto.permission
     menu.status = createMenuDto.status
     menu.menuType = createMenuDto.menuType
-    menu.createBy = userInfo.nickName
-    menu.updateBy = userInfo.nickName
+    menu.createBy = userInfo.userName
+    menu.updateBy = userInfo.userName
     try {
-      return await this.menuRepository.save(menu)
+      const res = await this.menuRepository.save(menu)
+      const menus = await this.menuRepository.find()
+      res.activeMenu = this.getParentIds(createMenuDto.path, 'path', menus)
+      return await this.menuRepository.save(res)
     } catch (e) {
       console.log(e)
       throw new BadRequestException('创建菜单失败')
@@ -51,7 +62,6 @@ export class MenuService {
    * 查询侧边菜单数据
    */
   async getMenu(conditions: string[], status: string[], userInfo: User) {
-    //TODO 根据当前用户的租户角色查询
     const queryBuilder = this.menuRepository
       .createQueryBuilder('menu')
       .where('menu.menuType in  (:...type)', { type: conditions })
@@ -70,7 +80,6 @@ export class MenuService {
         queryBuilder.andWhere('rm.role_id in (:...roleIds)', { roleIds })
       }
     }
-
     try {
       const res = await queryBuilder.getMany()
       return handleTree(res)
@@ -79,11 +88,13 @@ export class MenuService {
       throw new BadRequestException('查询菜单失败')
     }
   }
+
   /**
    * 更新菜单
    * @param updateMenuDto
    */
   async update(updateMenuDto: UpdateMenuDto, userInfo: User) {
+    const menus = await this.menuRepository.find()
     const menu = new Menu()
     menu.id = updateMenuDto.id
     menu.title = updateMenuDto.title
@@ -105,7 +116,8 @@ export class MenuService {
     menu.permission = updateMenuDto.permission
     menu.status = updateMenuDto.status
     menu.menuType = updateMenuDto.menuType
-    menu.updateBy = userInfo.nickName
+    menu.updateBy = userInfo.userName
+    menu.activeMenu = this.getParentIds(updateMenuDto.path, 'path', menus)
     try {
       return this.menuRepository.save(menu)
     } catch (e) {
@@ -150,5 +162,22 @@ export class MenuService {
     } catch (e) {
       throw new BadRequestException('删除菜单失败')
     }
+  }
+
+  getParentIds(parentPath: string, uniqueId: string, tree: any[]): string {
+    const deptMap: { [key: string]: string } = {}
+    tree.forEach((item) => {
+      deptMap[item[uniqueId]] = item.path
+    })
+
+    const parentPaths: string[] = []
+    let currentPath = parentPath
+
+    while (currentPath !== '/' && deptMap[currentPath]) {
+      parentPaths.push(deptMap[currentPath])
+      currentPath = currentPath.substring(0, currentPath.lastIndexOf('/'))
+    }
+
+    return JSON.stringify(parentPaths.reverse())
   }
 }

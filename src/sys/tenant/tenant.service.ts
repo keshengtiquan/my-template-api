@@ -28,8 +28,8 @@ export class TenantService {
       tenant.contactPhone = createTenantDto.contactPhone
       tenant.companyName = createTenantDto.companyName
       tenant.address = createTenantDto.address
-      tenant.createBy = userInfo.nickName
-      tenant.updateBy = userInfo.nickName
+      tenant.createBy = userInfo.userName
+      tenant.updateBy = userInfo.userName
       tenant.packageId = selectPackage
       await this.tenantRepository.manager.transaction(async (transactionalEntityManager) => {
         const createdTenant = await transactionalEntityManager.save(tenant)
@@ -153,7 +153,7 @@ export class TenantService {
           contactPhone: updateTenantDto.contactPhone,
           companyName: updateTenantDto.companyName,
           address: updateTenantDto.address,
-          updateBy: userInfo.nickName,
+          updateBy: userInfo.userName,
           packageId: selectPackage,
         },
       )

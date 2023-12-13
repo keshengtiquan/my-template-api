@@ -20,8 +20,8 @@ export class PackageService {
     tenantPackage.packageName = createPackageDto.packageName
     tenantPackage.menuIds = createPackageDto.menuIds
     tenantPackage.remark = createPackageDto.remark
-    tenantPackage.createBy = userInfo.nickName
-    tenantPackage.updateBy = userInfo.nickName
+    tenantPackage.createBy = userInfo.userName
+    tenantPackage.updateBy = userInfo.userName
     try {
       return this.packageRepository.save(tenantPackage)
     } catch (e) {
@@ -84,7 +84,7 @@ export class PackageService {
           packageName: updatePackageDto.packageName,
           menuIds: updatePackageDto.menuIds,
           remark: updatePackageDto.remark,
-          updateBy: userInfo.nickName,
+          updateBy: userInfo.userName,
         },
       )
     } catch (e) {

@@ -63,6 +63,9 @@ export class Menu {
   @Column({ nullable: true, length: 1, name: 'menu_type' })
   menuType: string
 
+  @Column({ nullable: true, type: 'varchar', length: 255, name: 'active_menu' })
+  activeMenu: string
+
   @JoinTable({
     name: 'sys_menu_role',
     joinColumns: [{ name: 'menu_id' }],
