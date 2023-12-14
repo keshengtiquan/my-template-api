@@ -174,12 +174,17 @@ export class ListService {
   /**
    * 导出清单
    */
-  async export(userInfo: User) {
+  async export(current: number, pageSize: number) {
     try {
       const excelHeader = await this.exportExcelRepository.findOne({
         where: { exportService: ExportFileService.LISTEXPORT },
       })
-      const ListData = await this.listRepository.find()
+      const queryBuilder = this.listRepository.createQueryBuilder('list').orderBy('list.serialNumber', 'ASC')
+      if (current && pageSize) {
+        queryBuilder.skip((current - 1) * pageSize)
+        queryBuilder.take(pageSize)
+      }
+      const listData = await queryBuilder.getMany()
       const options: ExportExcelParamsType = {
         style: {
           font: {
@@ -202,9 +207,9 @@ export class ListService {
         },
         headerColumns: JSON.parse(excelHeader.exportFields),
         sheetName: excelHeader.sheetName,
-        tableData: ListData,
+        tableData: listData,
       }
-      return await this.excelService.exportExcel(options, userInfo)
+      return options
     } catch (e) {
       console.log(e)
       throw new BadRequestException('导出清单失败')

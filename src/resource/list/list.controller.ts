@@ -30,10 +30,10 @@ export class ListController {
   /**
    * 文件导出
    */
-  @Post('/export')
+  @Get('/export')
   @Auth()
-  async export(@UserInfo() userInfo: User) {
-    return await this.listService.export(userInfo)
+  async export(@Query('current') current: number, @Query('pageSize') pageSize: number) {
+    return Result.success(await this.listService.export(current, pageSize))
   }
 
   /**

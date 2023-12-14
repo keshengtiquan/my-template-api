@@ -24,6 +24,9 @@ import { Auth } from '../sys/auth/decorators/auth.decorators'
 import { generateParseIntPipe } from '../utils'
 import { UpdateExcelDto } from './dto/update-excel.dto'
 import { CreateExportExcelDto } from './dto/create-export-excel.dto'
+import { UpdateExportExcelDto } from './dto/update-export-excel.dto'
+
+
 
 @Controller('excel')
 export class ExcelController {
@@ -117,5 +120,42 @@ export class ExcelController {
   @Auth()
   async exportCreate(@Body() createExportExcelDto: CreateExportExcelDto, @UserInfo() userInfo: User) {
     return Result.success(await this.excelService.exportCreate(createExportExcelDto, userInfo), '创建导出模版成功')
+  }
+
+  /**
+   * 导出模版列表
+   * @param current
+   * @param pageSize
+   * @param userInfo
+   */
+  @Get('/export/getlist')
+  @Auth()
+  async getExportList(
+    @Query('current', new DefaultValuePipe(1), generateParseIntPipe('current')) current: number,
+    @Query('pageSize', new DefaultValuePipe(10), generateParseIntPipe('pageSize')) pageSize: number,
+    @UserInfo() userInfo: User,
+  ) {
+    return Result.success(await this.excelService.getExportList(current, pageSize, userInfo))
+  }
+
+  /**
+   * 导出模版详情
+   * @param id
+   */
+  @Get('/export/get')
+  @Auth()
+  async getExportOneById(@Query('id') id: string) {
+    return Result.success(await this.excelService.getExportOneById(id))
+  }
+
+  /**
+   * 导出模版更新
+   * @param updateExportExcelDto
+   * @param userInfo
+   */
+  @Post('/export/update')
+  @Auth()
+  async updateExport(@Body() updateExportExcelDto: UpdateExportExcelDto, @UserInfo() userInfo: User) {
+    return Result.success(await this.excelService.updateExport(updateExportExcelDto, userInfo), '更新导出模版成功')
   }
 }

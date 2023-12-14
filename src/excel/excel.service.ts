@@ -10,6 +10,7 @@ import { ManagementGroup } from '../enmus'
 import { UpdateExcelDto } from './dto/update-excel.dto'
 import { CreateExportExcelDto } from './dto/create-export-excel.dto'
 import { ExportExcel } from './entities/export.excel.entity'
+import { UpdateExportExcelDto } from './dto/update-export-excel.dto'
 
 export interface ExportExcelParamsType {
   style: Record<string, any> //excel表的样式配置
@@ -303,9 +304,12 @@ export class ExcelService {
     const workbook = new Exceljs.Workbook()
     workbook.creator = userInfo.nickName
     workbook.created = new Date()
-    console.log(sheetName)
     // 添加工作表
     const worksheet = workbook.addWorksheet(sheetName)
+    const rows = [[5, 'Bob', new Date()]]
+
+    // add new rows and return them as array of row objects
+    worksheet.addRows(rows)
 
     if (headerColumns.length > 0) {
       // 设置列头
@@ -324,7 +328,7 @@ export class ExcelService {
         cell.style = style as Partial<Exceljs.Style>
       })
     }
-    // 设置行数据
+    //设置行数据
     if (tableData.length > 0) {
       // 将传入的数据格式化为exceljs可使用的数据格式
       const data = []
@@ -335,7 +339,6 @@ export class ExcelService {
         })
         data.push(obj)
       })
-      console.log(data)
       // 添加行
       if (data) worksheet.addRows(data)
 
@@ -352,6 +355,71 @@ export class ExcelService {
         })
       })
     }
-    return await workbook.xlsx.writeFile('output.xlsx')
+    await workbook.xlsx.writeFile('aaa.xlsx')
+    return await workbook.xlsx.writeBuffer()
+  }
+
+  /**
+   * 导出模版列表
+   * @param current
+   * @param pageSize
+   * @param userInfo
+   */
+  async getExportList(current: number, pageSize: number, userInfo: User) {
+    const queryBuilder = this.exportExcelRepository
+      .createQueryBuilder('excel')
+      .skip((current - 1) * pageSize)
+      .take(pageSize)
+    if (userInfo.tenantId !== ManagementGroup.ID) {
+      queryBuilder.where('excel.tenantId = :tenantId', { tenantId: userInfo.tenantId })
+    }
+    try {
+      const [list, total] = await queryBuilder.getManyAndCount()
+      return {
+        results: list,
+        current: current,
+        pageSize: pageSize,
+        total,
+      }
+    } catch (e) {
+      throw new BadRequestException('获取模版列表失败')
+    }
+  }
+
+  /**
+   * 导出模版详情
+   * @param id
+   */
+  async getExportOneById(id: string) {
+    try {
+      return await this.exportExcelRepository.findOne({
+        where: { id },
+      })
+    } catch (e) {
+      throw new BadRequestException('获取模版详情失败')
+    }
+  }
+
+  /**
+   * 导出模版更新
+   * @param updateExportExcelDto
+   * @param userInfo
+   */
+  async updateExport(updateExportExcelDto: UpdateExportExcelDto, userInfo: User) {
+    try {
+      return await this.exportExcelRepository.update(
+        { id: updateExportExcelDto.id },
+        {
+          templateName: updateExportExcelDto.templateName,
+          exportType: updateExportExcelDto.exportType,
+          exportService: updateExportExcelDto.exportService,
+          exportFields: updateExportExcelDto.exportFields,
+          sheetName: updateExportExcelDto.sheetName,
+          updateBy: userInfo.userName,
+        },
+      )
+    } catch (e) {
+      throw new BadRequestException('更新模版失败')
+    }
   }
 }
