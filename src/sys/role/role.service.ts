@@ -49,7 +49,6 @@ export class RoleService {
     try {
       return await this.roleRepository.save(role)
     } catch (e) {
-      console.log(e)
       throw new HttpException('角色创建失败', HttpStatus.BAD_REQUEST)
     }
   }
@@ -152,7 +151,6 @@ export class RoleService {
       await this.roleRepository.save(role)
       return await this.roleRepository.delete(id)
     } catch (e) {
-      console.log(e)
       throw new BadRequestException('删除角色失败')
     }
   }

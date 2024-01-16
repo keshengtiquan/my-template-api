@@ -171,7 +171,6 @@ export class TenantService {
         await manager.delete(Tenant, { id })
         await manager.delete(User, { tenantId: id })
       })
-      console.log(res)
     } catch (e) {
       throw new BadRequestException('删除租户失败')
     }

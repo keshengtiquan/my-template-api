@@ -1,5 +1,4 @@
-import { Column, CreateDateColumn, Entity, JoinTable, ManyToMany, PrimaryColumn, UpdateDateColumn } from 'typeorm'
-import { List } from '../../list/entities/list.entity'
+import { Column, CreateDateColumn, Entity, PrimaryColumn, UpdateDateColumn } from 'typeorm'
 
 export enum WorkPlaceType {
   STATION = 'station', //车站
@@ -35,13 +34,9 @@ export class WorkPlace {
   @Column({ type: 'int', nullable: false, name: 'sort_number', default: 0 })
   sortNumber: number
 
-  @ManyToMany(() => List)
-  @JoinTable({
-    name: 'sc_work_list',
-    joinColumns: [{ name: 'list_id' }],
-    inverseJoinColumns: [{ name: 'work_place_id' }],
-  })
-  workPlaceList: List[]
+  @Column({ type: 'decimal', default: 0, precision: 18, scale: 2, name: 'output_value', comment: '产值' })
+  outputValue: number
+
   //字段结束
 
   @Column({ nullable: true, length: 255, name: 'create_by' })

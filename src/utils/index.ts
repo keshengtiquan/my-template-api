@@ -119,3 +119,20 @@ export const getParentIds = (parentId: string, uniqueId: string, tree: any[]) =>
   parentIds.push(parentId)
   return parentIds
 }
+// 获取项目运行环境
+export const getEnv = () => {
+  return process.env.RUNNING_ENV
+}
+export const IS_DEV = getEnv() === 'dev'
+
+export const addTreeLeaf = (data: any[]) => {
+  return data.map((item) => {
+    const obj = { ...item, isTreeLeaf: true }
+    if (item.children && item.children.length > 0) {
+      obj.children = addTreeLeaf(item.children)
+    } else {
+      obj.isTreeLeaf = false
+    }
+    return obj
+  })
+}

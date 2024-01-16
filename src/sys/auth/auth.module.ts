@@ -5,7 +5,6 @@ import { TypeOrmModule } from '@nestjs/typeorm'
 import { User } from '../user/entities/user.entity'
 import { JwtStrategy } from './strategy/jwt.strategy'
 import { Tenant } from '../tenant/entities/tenant.entity'
-
 @Module({
   imports: [TypeOrmModule.forFeature([User, Tenant])],
   controllers: [AuthController],

@@ -17,10 +17,10 @@ export class Result<T> {
     return result
   }
 
-  static error<T>(msg: string): Result<T> {
+  static error<T>(code: number, msg: string): Result<T> {
     const result = new Result<T>()
     result.message = msg
-    result.code = 0
+    result.code = code || 400
     return result
   }
 }

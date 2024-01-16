@@ -14,9 +14,19 @@ import { ListModule } from './resource/list/list.module'
 import { ExcelController } from './excel/excel.controller'
 import { ExcelModule } from './excel/excel.module'
 import { WorkplaceModule } from './resource/workplace/workplace.module'
+import { DivisionModule } from './resource/division/division.module'
+import { SectionDivisionModule } from './resource/section-division/section-division.module'
+import { MyLoggerService } from './common/my-logger/my-logger.service'
+import { MyLoggerModule } from './common/my-logger/my-logger.module';
+import { GanttModule } from './plan/gantt/gantt.module';
+import { IssuedModule } from './plan/issued/issued.module';
+import { ProjectLogModule } from './project-log/project-log.module';
+import { ScheduleModule } from '@nestjs/schedule'
+import { TaskModule } from './task/task.module';
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: 'src/.env',
@@ -65,8 +75,15 @@ import { WorkplaceModule } from './resource/workplace/workplace.module'
     ListModule,
     ExcelModule,
     WorkplaceModule,
+    DivisionModule,
+    SectionDivisionModule,
+    MyLoggerModule,
+    GanttModule,
+    IssuedModule,
+    ProjectLogModule,
+    TaskModule,
   ],
   controllers: [ExcelController],
-  providers: [],
+  providers: [MyLoggerService],
 })
 export class AppModule {}

@@ -30,6 +30,12 @@ export class Dept {
   @Column({ type: 'varchar', nullable: true })
   leader: string
 
+  @Column({ type: 'varchar', nullable: true, length: 1, comment: '0: 公司， 1: 部门， 2: 工区， 3: 作业队' })
+  deptType: string
+
+  @Column({ type: 'varchar', nullable: true, length: 255, comment: '备注' })
+  remarks: string
+
   @Column({ nullable: true, length: 255, name: 'create_by' })
   createBy: string
 

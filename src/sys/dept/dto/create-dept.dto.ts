@@ -14,4 +14,8 @@ export class CreateDeptDto {
   email: string
   @IsOptional()
   status: string
+  @IsOptional()
+  deptType: string
+  @IsOptional()
+  remarks: string
 }

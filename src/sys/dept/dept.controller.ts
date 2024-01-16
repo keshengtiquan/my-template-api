@@ -82,4 +82,14 @@ export class DeptController {
     const data = await this.deptService.delete(id)
     return Result.success(data, '删除部门成功')
   }
+
+  /**
+   * 获取工区
+   * @param userInfo
+   */
+  @Get('/getWorkArea')
+  @Auth()
+  async getWorkArea(@UserInfo() userInfo: User) {
+    return Result.success(await this.deptService.getWorkArea(userInfo))
+  }
 }

@@ -19,3 +19,9 @@ export enum ImportFileService {
 export enum ExportFileService {
   LISTEXPORT = 'ListExportService',
 }
+
+export enum DeptTypeEnum {
+  COMPANY = '0',
+  DEPARTMENT = '1',
+  TEAM = '2',
+}

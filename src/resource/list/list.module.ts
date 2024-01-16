@@ -6,9 +6,12 @@ import { List } from './entities/list.entity'
 import { Excel } from '../../excel/entities/excel.entity'
 import { ExcelModule } from '../../excel/excel.module'
 import { ExportExcel } from '../../excel/entities/export.excel.entity'
+import { WorkPlaceList } from '../workplace/entities/workplace.list.entity'
+import { GanttList } from '../../plan/gantt/entities/gantt-list.entity'
+import { Issued } from '../../plan/issued/entities/issued.entity'
 
 @Module({
-  imports: [TypeOrmModule.forFeature([List, Excel, ExportExcel]), ExcelModule],
+  imports: [TypeOrmModule.forFeature([List, Excel, ExportExcel, WorkPlaceList, GanttList, Issued]), ExcelModule],
   controllers: [ListController],
   providers: [ListService],
   exports: [ListService],

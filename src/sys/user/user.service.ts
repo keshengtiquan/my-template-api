@@ -46,7 +46,6 @@ export class UserService {
       await this.userRepository.save(newUser)
       return '注册成功'
     } catch (e) {
-      console.log(e)
       return '注册失败'
     }
   }
@@ -73,7 +72,7 @@ export class UserService {
       queryBuilder.where('user.tenantId = :tenantId', { tenantId: userInfo.tenantId })
     }
     if (nickName) {
-      queryBuilder.andWhere('user.userName like :userName', { userName: `%${nickName}%` })
+      queryBuilder.andWhere('user.nickName like :nickName', { nickName: `%${nickName}%` })
     }
     try {
       const [list, total] = await queryBuilder.getManyAndCount()
@@ -84,7 +83,6 @@ export class UserService {
         total,
       }
     } catch (e) {
-      console.log(e)
       throw new BadRequestException('查询用户列表失败')
     }
   }
@@ -105,7 +103,6 @@ export class UserService {
     try {
       return await this.userRepository.update(id, { status })
     } catch (e) {
-      console.log(e)
       throw new BadRequestException('禁用用户失败')
     }
   }
@@ -167,7 +164,6 @@ export class UserService {
       updateUser.roles = roles
       return await this.userRepository.save(updateUser)
     } catch (e) {
-      console.log(e)
       throw new BadRequestException('更新用户失败')
     }
   }
@@ -194,5 +190,13 @@ export class UserService {
     } catch (e) {
       throw new BadRequestException('删除用户失败')
     }
+  }
+
+  setCurrentUser(request: any, user: any) {
+    request.currentUser = user
+  }
+
+  getCurrentUser(request: any): any {
+    return request.currentUser
   }
 }

@@ -84,7 +84,6 @@ export class MenuService {
       const res = await queryBuilder.getMany()
       return handleTree(res)
     } catch (e) {
-      console.log(e)
       throw new BadRequestException('查询菜单失败')
     }
   }

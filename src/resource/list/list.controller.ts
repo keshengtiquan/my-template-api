@@ -32,8 +32,8 @@ export class ListController {
    */
   @Get('/export')
   @Auth()
-  async export(@Query('current') current: number, @Query('pageSize') pageSize: number) {
-    return Result.success(await this.listService.export(current, pageSize))
+  async export(@Query('current') current: number, @Query('pageSize') pageSize: number, @UserInfo() userInfo: User) {
+    return Result.success(await this.listService.export(current, pageSize, userInfo))
   }
 
   /**
@@ -55,6 +55,7 @@ export class ListController {
     @Query('listCode') listCode: string,
     @Query('listName') listName: string,
     @Query('listCharacteristic') listCharacteristic: string,
+    @Query('sectionalEntry') sectionalEntry: string,
     @UserInfo() userInfo: User,
   ) {
     return Result.success(
@@ -66,11 +67,35 @@ export class ListController {
         listCode,
         listName,
         listCharacteristic,
+        sectionalEntry,
         userInfo,
       ),
     )
   }
 
+  /**
+   * 查询排除后的列表（工点）
+   * @param current
+   * @param pageSize
+   * @param workplaceId
+   * @param sortField
+   * @param sortOrder
+   * @param userInfo
+   */
+  @Get('/getlistExclude')
+  @Auth()
+  async getlistExclude(
+    @Query('current', new DefaultValuePipe(1), generateParseIntPipe('current')) current: number,
+    @Query('pageSize', new DefaultValuePipe(10), generateParseIntPipe('pageSize')) pageSize: number,
+    @Query('workPlaceId') workPlaceId: string,
+    @Query('sortField', new DefaultValuePipe('serialNumber')) sortField: string,
+    @Query('sortOrder', new DefaultValuePipe('ASC')) sortOrder: Order,
+    @UserInfo() userInfo: User,
+  ) {
+    return Result.success(
+      await this.listService.getlistExclude(current, pageSize, workPlaceId, sortField, sortOrder, userInfo),
+    )
+  }
   /**
    * 获取清单
    * @param id
@@ -111,5 +136,119 @@ export class ListController {
   @Auth()
   async delete(@Body('id') id: string) {
     return Result.success(await this.listService.delete(id), '清单删除成功')
+  }
+
+  /**
+   * 查询排除后的列表（分部分项）
+   * @param current
+   * @param pageSize
+   * @param listCode
+   * @param listName
+   * @param listCharacteristic
+   * @param userInfo
+   */
+  @Get('/getlistDivisionExclude')
+  @Auth()
+  async getlistDivisionExclude(
+    @Query('current', new DefaultValuePipe(1), generateParseIntPipe('current')) current: number,
+    @Query('pageSize', new DefaultValuePipe(10), generateParseIntPipe('pageSize')) pageSize: number,
+    @Query('listCode') listCode: string,
+    @Query('listName') listName: string,
+    @Query('listCharacteristic') listCharacteristic: string,
+    @UserInfo() userInfo: User,
+  ) {
+    return Result.success(
+      await this.listService.getlistDivisionExclude(
+        current,
+        pageSize,
+        listCode,
+        listName,
+        listCharacteristic,
+        userInfo,
+      ),
+    )
+  }
+
+  /**
+   * 查询排除后的列表（甘特图）
+   * @param current
+   * @param pageSize
+   * @param sortField
+   * @param sortOrder
+   * @param listCode
+   * @param listName
+   * @param listCharacteristic
+   * @param sectionalEntry
+   * @param userInfo
+   */
+  @Get('/getGanttExclude')
+  @Auth()
+  async getGanttExclude(
+    @Query('current', new DefaultValuePipe(1), generateParseIntPipe('current')) current: number,
+    @Query('pageSize', new DefaultValuePipe(10), generateParseIntPipe('pageSize')) pageSize: number,
+    @Query('sortField', new DefaultValuePipe('serialNumber')) sortField: string,
+    @Query('sortOrder', new DefaultValuePipe('ASC')) sortOrder: Order,
+    @Query('listCode') listCode: string,
+    @Query('listName') listName: string,
+    @Query('listCharacteristic') listCharacteristic: string,
+    @Query('sectionalEntry') sectionalEntry: string,
+    @UserInfo() userInfo: User,
+  ) {
+    return Result.success(
+      await this.listService.getGanttExclude(
+        current,
+        pageSize,
+        sortField,
+        sortOrder,
+        listCode,
+        listName,
+        listCharacteristic,
+        sectionalEntry,
+        userInfo,
+      ),
+    )
+  }
+
+  /**
+   * 查询排除后的列表（计划）
+   * @param current
+   * @param pageSize
+   * @param sortField
+   * @param sortOrder
+   * @param planName
+   * @param listCode
+   * @param listName
+   * @param listCharacteristic
+   * @param sectionalEntry
+   * @param userInfo
+   */
+  @Get('/getPlanExclude')
+  @Auth()
+  async getPlanExclude(
+    @Query('current', new DefaultValuePipe(1), generateParseIntPipe('current')) current: number,
+    @Query('pageSize', new DefaultValuePipe(10), generateParseIntPipe('pageSize')) pageSize: number,
+    @Query('sortField', new DefaultValuePipe('serialNumber')) sortField: string,
+    @Query('sortOrder', new DefaultValuePipe('ASC')) sortOrder: Order,
+    @Query('planName') planName: string,
+    @Query('listCode') listCode: string,
+    @Query('listName') listName: string,
+    @Query('listCharacteristic') listCharacteristic: string,
+    @Query('sectionalEntry') sectionalEntry: string,
+    @UserInfo() userInfo: User,
+  ) {
+    return Result.success(
+      await this.listService.getPlanExclude(
+        current,
+        pageSize,
+        sortField,
+        sortOrder,
+        planName,
+        listCode,
+        listName,
+        listCharacteristic,
+        sectionalEntry,
+        userInfo,
+      ),
+    )
   }
 }

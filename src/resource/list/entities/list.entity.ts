@@ -37,11 +37,16 @@ export class List {
   @Column({ type: 'int' })
   quantities: number
 
-  @Column({ type: 'float', name: 'unit_price' })
+  @Column({ type: 'decimal', default: 0, precision: 18, scale: 2, name: 'unit_price' })
   unitPrice: number
 
-  @Column({ type: 'float', name: 'combined_price' })
+  @Column({ type: 'decimal', default: 0, precision: 18, scale: 2, name: 'combined_price' })
   combinedPrice: number
+
+  @Column({ type: 'varchar', default: '', length: 1000, name: 'sectional_entry', comment: '分部分项' })
+  sectionalEntry: string
+  @Column({ type: 'varchar', default: '', length: 1000, name: 'current_section', comment: '当前分项' })
+  currentSection: string
   /**
    * 表格字段结束
    */
