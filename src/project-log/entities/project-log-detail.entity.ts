@@ -31,6 +31,12 @@ export class ProjectLogDetail {
 
   @Column({ type: 'double', nullable: true, name: 'completion_quantity', comment: '完成数量' })
   completionQuantity: number
+
+  @Column({ type: 'double', default: 0, name: 'left_quantities', comment: '左线工程量' })
+  leftQuantities: number
+
+  @Column({ type: 'double', default: 0, name: 'right_quantities', comment: '左线工程量' })
+  rightQuantities: number
   //字段结束
   @Column({ nullable: true, length: 255, name: 'create_by' })
   createBy: string

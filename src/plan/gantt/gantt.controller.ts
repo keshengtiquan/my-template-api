@@ -74,7 +74,6 @@ export class GanttController {
   @Post('/delete')
   @Auth()
   async delete(@Body('id') id: string, @UserInfo() userInfo: User) {
-    console.log(id)
     return Result.success(await this.ganttService.delete(id, userInfo))
   }
 

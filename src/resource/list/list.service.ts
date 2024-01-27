@@ -14,6 +14,7 @@ import { WorkPlaceList } from '../workplace/entities/workplace.list.entity'
 import { GanttList } from '../../plan/gantt/entities/gantt-list.entity'
 import { MyLoggerService } from '../../common/my-logger/my-logger.service'
 import { Issued } from '../../plan/issued/entities/issued.entity'
+import { ProjectLogDetail } from '../../project-log/entities/project-log-detail.entity'
 
 @Injectable()
 export class ListService {
@@ -33,6 +34,8 @@ export class ListService {
   private ganttListRepository: Repository<GanttList>
   @InjectRepository(Issued)
   private issuedRepository: Repository<Issued>
+  @InjectRepository(ProjectLogDetail)
+  private projectLogDetailRepository: Repository<ProjectLogDetail>
 
   async upload(file: Express.Multer.File, userInfo: User) {
     function conditionCheckFunc(data) {
@@ -196,11 +199,9 @@ export class ListService {
         queryBuilder.skip((current - 1) * pageSize)
         queryBuilder.take(pageSize)
       }
-      if (userInfo.tenantId !== ManagementGroup.ID) {
-        queryBuilder.where('list.tenantId = :tenantId', {
-          tenantId: userInfo.tenantId,
-        })
-      }
+      queryBuilder.where('list.tenantId = :tenantId', {
+        tenantId: userInfo.tenantId,
+      })
       const listData = await queryBuilder.getMany()
       const options: ExportExcelParamsType = {
         style: {
@@ -477,4 +478,88 @@ export class ListService {
       throw new BadRequestException('获取列表失败')
     }
   }
+
+  /**
+   * 获取日志列表（排除已关联的日志）
+   * @param current
+   * @param pageSize
+   * @param sortField
+   * @param sortOrder
+   * @param logId
+   * @param listCode
+   * @param listName
+   * @param listCharacteristic
+   * @param sectionalEntry
+   * @param userInfo
+   */
+  async getLogExclude(
+    current: number,
+    pageSize: number,
+    sortField: string,
+    sortOrder: Order,
+    logId: string,
+    listCode: string,
+    listName: string,
+    listCharacteristic: string,
+    sectionalEntry: string,
+    userInfo: User,
+  ) {
+    const lists = await this.projectLogDetailRepository.find({
+      where: {
+        logId: logId,
+        tenantId: userInfo.tenantId,
+      },
+      select: ['listId'],
+    })
+    const listIds = lists.map((item) => item.listId)
+    const queryBuilder = this.listRepository
+      .createQueryBuilder('list')
+      .skip((current - 1) * pageSize)
+      .take(pageSize)
+      .orderBy(`list.${sortField}`, sortOrder)
+      .where('list.tenantId = :tenantId', {
+        tenantId: userInfo.tenantId,
+      })
+      .andWhere('list.id NOT IN (:...listIds)', { listIds })
+    if (listCode) {
+      queryBuilder.andWhere('list.listCode = :listCode', { listCode })
+    }
+    if (listName) {
+      queryBuilder.andWhere('list.listName like :listName', { listName: `%${listName}%` })
+    }
+    if (listCharacteristic) {
+      queryBuilder.andWhere('list.listCharacteristic like :listCharacteristic', {
+        listCharacteristic: `%${listCharacteristic}%`,
+      })
+    }
+    if (sectionalEntry) {
+      queryBuilder.andWhere('list.sectionalEntry like :sectionalEntry', {
+        sectionalEntry: `%${sectionalEntry}%`,
+      })
+    }
+    const [list, total] = await queryBuilder.getManyAndCount()
+
+    return {
+      results: list,
+      current,
+      total,
+      pageSize,
+    }
+  }
+
+  /**
+   * 设置清单为重点关注清单
+   * @param id
+   * @param userInfo
+   */
+  async setFocus(id: string, isFocusList: boolean, userInfo: User) {
+    return await this.listRepository.update(
+      { id },
+      {
+        isFocusList: isFocusList,
+        updateBy: userInfo.userName,
+      },
+    )
+  }
+
 }

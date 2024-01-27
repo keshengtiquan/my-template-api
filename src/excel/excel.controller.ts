@@ -26,8 +26,6 @@ import { UpdateExcelDto } from './dto/update-excel.dto'
 import { CreateExportExcelDto } from './dto/create-export-excel.dto'
 import { UpdateExportExcelDto } from './dto/update-export-excel.dto'
 
-
-
 @Controller('excel')
 export class ExcelController {
   constructor(private readonly excelService: ExcelService) {}
@@ -157,5 +155,14 @@ export class ExcelController {
   @Auth()
   async updateExport(@Body() updateExportExcelDto: UpdateExportExcelDto, @UserInfo() userInfo: User) {
     return Result.success(await this.excelService.updateExport(updateExportExcelDto, userInfo), '更新导出模版成功')
+  }
+  /**
+   * 导入模板下载
+   * @param userInfo
+   */
+  @Post('/template')
+  @Auth()
+  async exportTemplate(@Body('serviceName') serviceName: string, @UserInfo() userInfo: User) {
+    return await this.excelService.exportTemplate(serviceName, userInfo)
   }
 }

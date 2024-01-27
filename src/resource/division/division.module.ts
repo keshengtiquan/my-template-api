@@ -9,5 +9,6 @@ import { List } from '../list/entities/list.entity'
   imports: [TypeOrmModule.forFeature([Division, List])],
   controllers: [DivisionController],
   providers: [DivisionService],
+  exports: [DivisionService],
 })
 export class DivisionModule {}

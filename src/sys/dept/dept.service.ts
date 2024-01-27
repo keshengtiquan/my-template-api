@@ -49,7 +49,6 @@ export class DeptService {
         }
       })
     } catch (e) {
-      console.log(e)
       throw new BadRequestException('创建部门失败')
     }
   }

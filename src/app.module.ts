@@ -17,12 +17,13 @@ import { WorkplaceModule } from './resource/workplace/workplace.module'
 import { DivisionModule } from './resource/division/division.module'
 import { SectionDivisionModule } from './resource/section-division/section-division.module'
 import { MyLoggerService } from './common/my-logger/my-logger.service'
-import { MyLoggerModule } from './common/my-logger/my-logger.module';
-import { GanttModule } from './plan/gantt/gantt.module';
-import { IssuedModule } from './plan/issued/issued.module';
-import { ProjectLogModule } from './project-log/project-log.module';
+import { MyLoggerModule } from './common/my-logger/my-logger.module'
+import { GanttModule } from './plan/gantt/gantt.module'
+import { IssuedModule } from './plan/issued/issued.module'
+import { ProjectLogModule } from './project-log/project-log.module'
 import { ScheduleModule } from '@nestjs/schedule'
-import { TaskModule } from './task/task.module';
+import { TaskModule } from './task/task.module'
+import { AnalyseModule } from './analyse/analyse.module';
 
 @Module({
   imports: [
@@ -41,7 +42,7 @@ import { TaskModule } from './task/task.module';
           password: configService.get('mysql_server_password'),
           database: configService.get('mysql_server_database'),
           synchronize: true,
-          logging: true,
+          logging: false,
           entities: [__dirname + '/**/*.entity{.ts,.js}'],
           poolSize: 10,
           connectorPackage: 'mysql2',
@@ -82,6 +83,7 @@ import { TaskModule } from './task/task.module';
     IssuedModule,
     ProjectLogModule,
     TaskModule,
+    AnalyseModule,
   ],
   controllers: [ExcelController],
   providers: [MyLoggerService],

@@ -262,7 +262,6 @@ export class IssuedService {
     try {
       const list = await queryBuilder.getRawMany()
       const [total] = await totalQueryBuilder.getRawMany()
-      console.log(total)
       return {
         results: list,
         current,

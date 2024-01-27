@@ -34,7 +34,7 @@ export class List {
   @Column({ type: 'varchar', length: 10, name: 'unit' })
   unit: string
 
-  @Column({ type: 'int' })
+  @Column({ type: 'double' })
   quantities: number
 
   @Column({ type: 'decimal', default: 0, precision: 18, scale: 2, name: 'unit_price' })
@@ -47,6 +47,9 @@ export class List {
   sectionalEntry: string
   @Column({ type: 'varchar', default: '', length: 1000, name: 'current_section', comment: '当前分项' })
   currentSection: string
+
+  @Column({ type: 'boolean', default: false, name: 'is_focus_list' })
+  isFocusList: boolean
   /**
    * 表格字段结束
    */

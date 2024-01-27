@@ -35,7 +35,6 @@ export class ListController {
   async export(@Query('current') current: number, @Query('pageSize') pageSize: number, @UserInfo() userInfo: User) {
     return Result.success(await this.listService.export(current, pageSize, userInfo))
   }
-
   /**
    * 查询清单列表
    * @param current
@@ -250,5 +249,59 @@ export class ListController {
         userInfo,
       ),
     )
+  }
+
+  /**
+   * 获取日志列表（排除已关联的日志）
+   * @param current
+   * @param pageSize
+   * @param sortField
+   * @param sortOrder
+   * @param logId
+   * @param listCode
+   * @param listName
+   * @param listCharacteristic
+   * @param sectionalEntry
+   * @param userInfo
+   */
+  @Get('/getLogExclude')
+  @Auth()
+  async getLogExclude(
+    @Query('current', new DefaultValuePipe(1), generateParseIntPipe('current')) current: number,
+    @Query('pageSize', new DefaultValuePipe(10), generateParseIntPipe('pageSize')) pageSize: number,
+    @Query('sortField', new DefaultValuePipe('serialNumber')) sortField: string,
+    @Query('sortOrder', new DefaultValuePipe('ASC')) sortOrder: Order,
+    @Query('logId') logId: string,
+    @Query('listCode') listCode: string,
+    @Query('listName') listName: string,
+    @Query('listCharacteristic') listCharacteristic: string,
+    @Query('sectionalEntry') sectionalEntry: string,
+    @UserInfo() userInfo: User,
+  ) {
+    return Result.success(
+      await this.listService.getLogExclude(
+        current,
+        pageSize,
+        sortField,
+        sortOrder,
+        logId,
+        listCode,
+        listName,
+        listCharacteristic,
+        sectionalEntry,
+        userInfo,
+      ),
+    )
+  }
+
+  /**
+   * 设置清单为重点关注清单
+   * @param id
+   * @param userInfo
+   */
+  @Post('/setFocus')
+  @Auth()
+  async setFocus(@Body('id') id: string, @Body('isFocusList') isFocusList: boolean, @UserInfo() userInfo: User) {
+    return Result.success(await this.listService.setFocus(id, isFocusList, userInfo))
   }
 }

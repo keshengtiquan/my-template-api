@@ -111,6 +111,18 @@ export class WorkplaceController {
   }
 
   /**
+   *  导出
+   * @param current
+   * @param pageSize
+   * @param userInfo
+   */
+  @Post('/export')
+  @Auth()
+  async export(@Body('current') current: number, @Body('pageSize') pageSize: number, @UserInfo() userInfo: User) {
+    return Result.success(await this.workplaceService.export(current, pageSize, userInfo), '工点导出成功')
+  }
+
+  /**
    * 工点关联清单
    * @param id
    * @param listIds
@@ -202,5 +214,23 @@ export class WorkplaceController {
   @Auth()
   async deleteWorkPlaceRelevanceList(@Body('ids') ids: string[]) {
     return Result.success(await this.workplaceService.deleteWorkPlaceRelevanceList(ids), '删除关联的清单成功')
+  }
+
+  /**
+   * 根据清单获取工点
+   * @param listId
+   */
+  @Get('/getWorkPlaceByListId')
+  @Auth()
+  async getWorkPlaceByListId(
+    @Query('current', new DefaultValuePipe(1), generateParseIntPipe('current')) current: number,
+    @Query('pageSize', new DefaultValuePipe(10), generateParseIntPipe('pageSize')) pageSize: number,
+    @Query('listId') listId: string,
+    @UserInfo() userInfo: User,
+  ) {
+    return Result.success(
+      await this.workplaceService.getWorkPlaceByListId(current, pageSize, listId, userInfo),
+      '查询工点成功',
+    )
   }
 }

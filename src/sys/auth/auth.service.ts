@@ -26,7 +26,6 @@ export class AuthService {
     if (!user) {
       throw new HttpException('用户不存在', HttpStatus.BAD_REQUEST)
     }
-    console.log(user)
 
     if (user.password !== md5(loginDto.password)) {
       throw new HttpException('密码错误', HttpStatus.BAD_REQUEST)

@@ -29,8 +29,6 @@ export class Division {
   @Column({ type: 'varchar', nullable: true, length: 1000, name: 'parent_names' })
   parentNames: string
 
-  @Column({ type: 'decimal', default: 0, precision: 18, scale: 2, name: 'output_value', comment: '产值' })
-  outputValue: number
   //字段结束
 
   @Column({ nullable: true, length: 255, name: 'create_by' })

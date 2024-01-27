@@ -5,7 +5,7 @@ import { InjectRepository } from '@nestjs/typeorm'
 import { WorkPlace, WorkPlaceType } from './entities/workplace.entity'
 import { Repository } from 'typeorm'
 import { Order } from '../../types'
-import { ImportFileService, ManagementGroup } from '../../enmus'
+import { ExportFileService, ImportFileService, ManagementGroup } from '../../enmus'
 import { UpdateWorkplaceDto } from './dto/update-workplace.dto'
 import { Excel } from '../../excel/entities/excel.entity'
 import { ExcelService } from '../../excel/excel.service'
@@ -13,6 +13,8 @@ import { List } from '../list/entities/list.entity'
 import { WorkPlaceList } from './entities/workplace.list.entity'
 import Decimal from 'decimal.js'
 import { MyLoggerService } from '../../common/my-logger/my-logger.service'
+import { ExportExcel } from '../../excel/entities/export.excel.entity'
+import { excelOption } from '../../utils/exportExcelOption'
 
 @Injectable()
 export class WorkplaceService {
@@ -28,6 +30,8 @@ export class WorkplaceService {
   private loggerService: MyLoggerService
   @Inject()
   private excelService: ExcelService
+  @InjectRepository(ExportExcel)
+  private exportExcelRepository: Repository<ExportExcel>
 
   /**
    * 创建工点
@@ -373,9 +377,9 @@ export class WorkplaceService {
 
       workPlaceList.forEach((item) => {
         dynamicColumnsResult += `
-      MAX(CASE WHEN wp.workplace_code= '${item.workPlaceCode}' THEN wpl.all_quantities ELSE 0 END) as '${item.workPlaceCode}_all_quantities',
-      MAX(CASE WHEN wp.workplace_code= '${item.workPlaceCode}' THEN wpl.left_quantities ELSE 0 END) as '${item.workPlaceCode}_left_quantities',
-      MAX(CASE WHEN wp.workplace_code= '${item.workPlaceCode}' THEN wpl.right_quantities ELSE 0 END) as '${item.workPlaceCode}_right_quantities',`
+      CAST(MAX(CASE WHEN wp.workplace_code= '${item.workPlaceCode}' THEN wpl.all_quantities ELSE 0 END)AS DECIMAL(10, 2)) as '${item.workPlaceCode}_all_quantities',
+      CAST(MAX(CASE WHEN wp.workplace_code= '${item.workPlaceCode}' THEN wpl.left_quantities ELSE 0 END)AS DECIMAL(10, 2)) as '${item.workPlaceCode}_left_quantities',
+      CAST(MAX(CASE WHEN wp.workplace_code= '${item.workPlaceCode}' THEN wpl.right_quantities ELSE 0 END)AS DECIMAL(10, 2)) as '${item.workPlaceCode}_right_quantities',`
       })
 
       const dynamicColumns = dynamicColumnsResult.slice(0, -1)
@@ -430,6 +434,64 @@ export class WorkplaceService {
         .execute()
     } catch (e) {
       throw new BadRequestException('删除工点下关联的清单失败')
+    }
+  }
+  /**
+   * 根据清单获取工点
+   * @param listId
+   */
+  async getWorkPlaceByListId(current: number, pageSize: number, listId: string, userInfo: User) {
+    const queryBuilder = this.workPlaceListRepository
+      .createQueryBuilder('wpl')
+      .leftJoin(WorkPlace, 'wp', 'wp.id = wpl.work_placeId')
+      .select([
+        'wpl.work_placeId as workPlaceId',
+        'wp.workplace_name as workPlaceName',
+        'wp.workplace_type as workPlaceType',
+      ])
+      .where('wpl.tenantId =:tenantId', { tenantId: userInfo.tenantId })
+      .andWhere('wpl.listId =:listId', { listId })
+    const workPlaceList = await queryBuilder.getRawMany()
+    return workPlaceList.map((item) => {
+      const { workPlaceId, workPlaceName, workPlaceType } = item
+      const obj = {
+        value: workPlaceId,
+        label: workPlaceName,
+      }
+      if (workPlaceType === 'section') {
+        obj['children'] = [
+          { value: 'leftQuantities', label: '左线' },
+          { value: 'rightQuantities', label: '右线' },
+        ]
+      }
+      return obj
+    })
+  }
+
+  /**
+   *  导出
+   * @param current
+   * @param pageSize
+   * @param userInfo
+   */
+  async export(current: number, pageSize: number, userInfo: User) {
+    try {
+      const excelHeader = await this.exportExcelRepository.findOne({
+        where: { exportService: ExportFileService.WORKPLACEEXPORT, tenantId: userInfo.tenantId },
+      })
+      const queryBuilder = this.workPlaceRepository.createQueryBuilder('wp').orderBy('wp.sortNumber', 'ASC')
+      if (current && pageSize) {
+        queryBuilder.skip((current - 1) * pageSize)
+        queryBuilder.take(pageSize)
+      }
+      queryBuilder.where('wp.tenantId = :tenantId', {
+        tenantId: userInfo.tenantId,
+      })
+      const listData = await queryBuilder.getMany()
+      return excelOption(listData, excelHeader)
+    } catch (e) {
+      console.log(e)
+      throw new BadRequestException('导出失败')
     }
   }
 }

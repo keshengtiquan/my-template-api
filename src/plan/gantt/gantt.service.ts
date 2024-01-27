@@ -162,7 +162,6 @@ export class GanttService {
    * @param userInfo
    */
   async delete(id: string, userInfo: User) {
-    console.log(id)
     try {
       return await this.ganttRepository.manager.transaction(async (manager) => {
         await manager.delete(Gantt, id)

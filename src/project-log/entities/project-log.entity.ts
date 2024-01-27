@@ -20,7 +20,7 @@ export class ProjectLog {
   @Column({ type: 'varchar', length: 64, name: 'fill_date', comment: '填报日期' })
   fillDate: string
 
-  @Column({ type: 'varchar', length: 64, nullable: true, name: 'fill_user', comment: '填报人' })
+  @Column({ type: 'varchar', length: 64, default: '', name: 'fill_user', comment: '填报人' })
   fillUser: string
 
   @Column({ type: 'varchar', length: 64, nullable: true, name: 'work_people_number', comment: '施工人数' })

@@ -1,10 +1,17 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { Cron, CronExpression, SchedulerRegistry } from '@nestjs/schedule'
+import { Cron, CronExpression } from '@nestjs/schedule'
 import { ProjectLogService } from '../project-log/project-log.service'
 
 @Injectable()
 export class TaskService {
   @Inject()
   private projectLogService: ProjectLogService
-  constructor(protected schedulerRegistry: SchedulerRegistry) {}
+
+  @Cron(CronExpression.EVERY_DAY_AT_5PM, {
+    name: 'generateLog',
+    timeZone: 'Asia/Shanghai',
+  })
+  async generateLogTask() {
+    await this.projectLogService.generateLog()
+  }
 }

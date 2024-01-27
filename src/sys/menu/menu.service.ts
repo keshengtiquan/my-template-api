@@ -53,7 +53,6 @@ export class MenuService {
       res.activeMenu = this.getParentIds(createMenuDto.path, 'path', menus)
       return await this.menuRepository.save(res)
     } catch (e) {
-      console.log(e)
       throw new BadRequestException('创建菜单失败')
     }
   }

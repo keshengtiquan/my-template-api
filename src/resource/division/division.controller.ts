@@ -104,11 +104,7 @@ export class DivisionController {
    */
   @Post('/deleteDivisionList')
   @Auth()
-  async deleteDivisionList(
-    @Body('ids') ids: string[],
-    @Body('divisionId') divisionId: string,
-    @UserInfo() userInfo: User,
-  ) {
-    return Result.success(await this.divisionService.deleteDivisionList(ids, divisionId, userInfo), '删除成功')
+  async deleteDivisionList(@Body('ids') ids: string[]) {
+    return Result.success(await this.divisionService.deleteDivisionList(ids), '删除成功')
   }
 }

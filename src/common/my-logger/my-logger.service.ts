@@ -14,12 +14,6 @@ const transportsHandler = () => {
       maxsize: 1024 * 20,
       level: 'error',
     }),
-    new transports.File({
-      filename: path.join(process.cwd(), 'logs', `info-${dayjs(new Date()).format('YYYY-MM-DD')}.log`),
-      dirname: 'logs',
-      maxsize: 1024 * 20,
-      level: 'silly',
-    }),
   ]
   if (IS_DEV) {
     transportsList.push(new transports.Console({}))

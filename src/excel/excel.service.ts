@@ -11,6 +11,7 @@ import { UpdateExcelDto } from './dto/update-excel.dto'
 import { CreateExportExcelDto } from './dto/create-export-excel.dto'
 import { ExportExcel } from './entities/export.excel.entity'
 import { UpdateExportExcelDto } from './dto/update-export-excel.dto'
+import { CustomDecorator } from '../decorators/custom.dectorator'
 
 export interface ExportExcelParamsType {
   style: Record<string, any> //excel表的样式配置
@@ -98,8 +99,8 @@ export class ExcelService {
    * @param file
    * @param userInfo
    * @param serviceName
-   * @param callback
-   * @param conditionCheckFunc
+   * @param callback 创建数据的方法
+   * @param conditionCheckFunc 条件校验方法
    */
   async excelImport(
     file: Express.Multer.File,
@@ -149,7 +150,7 @@ export class ExcelService {
   }
 
   /**
-   * 处理列字段
+   * 处理列字段 index转ABC
    * @param index
    */
   columnIndexToColumnLetter(index: number): string {
@@ -421,5 +422,46 @@ export class ExcelService {
     } catch (e) {
       throw new BadRequestException('更新模版失败')
     }
+  }
+
+  /**
+   * 导入模板下载
+   * @param userInfo
+   */
+  async exportTemplate(serviceName: string, userInfo: User) {
+    try {
+      const res = await this.excelRepository.findOne({
+        where: {
+          serviceName: serviceName,
+          tenantId: userInfo.tenantId,
+        },
+        select: ['importField', 'importTemplateField', 'sheetName'],
+      })
+      const options: ExportExcelParamsType = {
+        style: {
+          font: {
+            size: 10,
+            bold: true,
+            color: { argb: 'ffffff' },
+          },
+          alignment: { vertical: 'middle', horizontal: 'center' },
+          fill: {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: '808080' },
+          },
+          border: {
+            top: { style: 'thin', color: { argb: '9e9e9e' } },
+            left: { style: 'thin', color: { argb: '9e9e9e' } },
+            bottom: { style: 'thin', color: { argb: '9e9e9e' } },
+            right: { style: 'thin', color: { argb: '9e9e9e' } },
+          },
+        },
+        headerColumns: JSON.parse(res.importField),
+        sheetName: res.sheetName,
+        tableData: [],
+      }
+      return options
+    } catch (e) {}
   }
 }

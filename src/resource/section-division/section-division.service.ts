@@ -118,7 +118,6 @@ export class SectionDivisionService {
       const sectionDivision = await this.sectionDivisionRepository.findOne({
         where: { id: id, tenantId: userInfo.tenantId },
       })
-      console.log(sectionDivision)
       if (!sectionDivision || !sectionDivision.listIds || JSON.parse(sectionDivision.listIds).length === 0) {
         // throw new Error('该区段没有清单')
         return []
@@ -161,7 +160,6 @@ export class SectionDivisionService {
         .take(pageSize)
         .orderBy('list.serial_number', 'ASC')
         .getRawMany()
-      console.log(list)
       const results = list.map((item: any) => {
         const { unitPrice } = item
         let { totalQuantities } = item
@@ -190,7 +188,6 @@ export class SectionDivisionService {
         total: await queryBuilder.getCount(),
       }
     } catch (e) {
-      console.log(e)
       if (e instanceof Error) {
         throw new BadRequestException(e.message)
       } else {
@@ -231,13 +228,11 @@ export class SectionDivisionService {
    * @param userInfo
    */
   async getSectionDivisionWorkPlaceName(id: string, userInfo: User) {
-    console.log(id)
     try {
       const res = await this.workPlaceRepository.manager.transaction(async (manager) => {
         const sectionDivision = await this.sectionDivisionRepository.findOne({
           where: { id: id, tenantId: userInfo.tenantId },
         })
-        console.log(sectionDivision)
         if (!sectionDivision || sectionDivision.workPlaceIds === '[]') {
           return null
         }
@@ -264,7 +259,6 @@ export class SectionDivisionService {
    * @param userInfo
    */
   async updateSectorAndPrincipal(id: string, sector: string, principal: string, userInfo: User) {
-    console.log(id, sector, principal)
     try {
       return await this.sectionDivisionRepository.update(
         { id: id },
@@ -300,7 +294,6 @@ export class SectionDivisionService {
         },
         select: ['id', 'workPlaceType'],
       })
-      console.log(workplace.filter((item) => item.workPlaceType === WorkPlaceType.SECTION).map((item) => item.id))
       return {
         listIds: JSON.parse(sectionDivision.listIds),
         stationList: workplace.filter((item) => item.workPlaceType === WorkPlaceType.STATION).map((item) => item.id),
