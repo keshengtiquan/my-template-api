@@ -562,4 +562,30 @@ export class ListService {
     )
   }
 
+  /**
+   * 清单名称和id互转
+   * @param filed
+   * @param userInfo
+   */
+  async transitionIdOrName(filed: string, userInfo: User) {
+    const name = await this.listRepository.findOne({
+      where: {
+        id: filed,
+        tenantId: userInfo.tenantId,
+      },
+    })
+    if (name) {
+      return name.listCode
+    }
+    const id = await this.listRepository.findOne({
+      where: {
+        listCode: filed,
+        tenantId: userInfo.tenantId,
+      },
+    })
+    if (id) {
+      return id.id
+    }
+    throw new BadRequestException('请输入正确的名称或ID')
+  }
 }

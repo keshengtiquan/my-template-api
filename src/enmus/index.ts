@@ -14,6 +14,7 @@ export enum UserType {
 export enum ImportFileService {
   PROJECTIMPORT = 'projectListImport',
   WORKPLACEIMPORT = 'WorkPlaceImport',
+  WORKPLACELISTRELEVANCESERVICE = 'WorkPlaceListRelevanceService',
 }
 
 export enum ExportFileService {
@@ -25,4 +26,9 @@ export enum DeptTypeEnum {
   COMPANY = '0',
   DEPARTMENT = '1',
   TEAM = '2',
+}
+
+export enum WorkPlaceTypeEnum {
+  STATION = 'station',
+  SECTION = 'section',
 }

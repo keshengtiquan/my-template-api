@@ -124,8 +124,8 @@ export class WorkplaceController {
 
   /**
    * 工点关联清单
-   * @param id
-   * @param listIds
+   * @param id 工点ID
+   * @param listIds 清单id
    * @param userInfo
    */
   @Post('/relevanceListId')
@@ -232,5 +232,27 @@ export class WorkplaceController {
       await this.workplaceService.getWorkPlaceByListId(current, pageSize, listId, userInfo),
       '查询工点成功',
     )
+  }
+
+  /**
+   * 上传关联清单
+   * @param body
+   * @param userInfo
+   */
+  @Post('/uploadRelevance')
+  @Auth()
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadRelevance(@UploadedFile() file: Express.Multer.File, @UserInfo() userInfo: User) {
+    return await this.workplaceService.uploadRelevance(file, userInfo)
+  }
+
+  /**
+   * 导出多级表头
+   * @param userInfo
+   */
+  @Post('/exportMultilevelHeader')
+  @Auth()
+  async exportMultilevelHeader(@UserInfo() userInfo: User) {
+    return await this.workplaceService.exportMultilevelHeader(userInfo)
   }
 }

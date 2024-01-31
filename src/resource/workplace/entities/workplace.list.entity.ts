@@ -2,7 +2,7 @@ import { Column, CreateDateColumn, Entity, PrimaryColumn, UpdateDateColumn } fro
 
 @Entity('sc_work_place_list')
 export class WorkPlaceList {
-  @PrimaryColumn({ comment: '主键', name: 'id', type: 'bigint' })
+  @Column({ comment: '主键', name: 'id', type: 'bigint' })
   id: string
 
   @Column({
@@ -26,10 +26,10 @@ export class WorkPlaceList {
   @Column({ type: 'float', default: 0, name: 'right_quantities', comment: '左线工程量' })
   rightQuantities: number
 
-  @Column({ name: 'work_placeId' })
+  @PrimaryColumn({ name: 'work_placeId' })
   workPlaceId: string
 
-  @Column({ name: 'list_id' })
+  @PrimaryColumn({ name: 'list_id' })
   listId: string
 
   @Column({ type: 'decimal', default: 0, precision: 18, scale: 2, name: 'combined_price' })

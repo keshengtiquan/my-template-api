@@ -11,7 +11,6 @@ import { UpdateExcelDto } from './dto/update-excel.dto'
 import { CreateExportExcelDto } from './dto/create-export-excel.dto'
 import { ExportExcel } from './entities/export.excel.entity'
 import { UpdateExportExcelDto } from './dto/update-export-excel.dto'
-import { CustomDecorator } from '../decorators/custom.dectorator'
 
 export interface ExportExcelParamsType {
   style: Record<string, any> //excel表的样式配置
@@ -107,7 +106,7 @@ export class ExcelService {
     userInfo: User,
     serviceName: string,
     callback: (...args: any[]) => Promise<any>,
-    conditionCheckFunc?: (data: object) => boolean,
+    conditionCheckFunc?: (data: object, p?: any[]) => boolean,
   ) {
     let success = 0
     const failed = []
@@ -116,16 +115,19 @@ export class ExcelService {
     })
     const excelData = await this.parseExcel(file, option.sheetName, option.skipRows)
     const importField = JSON.parse(option.importField)
-
     for (let i = 0; i < excelData.length; i++) {
-      if (conditionCheckFunc && conditionCheckFunc(excelData[i])) {
+      if (conditionCheckFunc && conditionCheckFunc(excelData[i], importField)) {
         continue
       }
       const rowData: Record<any, any> = {}
       for (const excelDataKey in excelData[i]) {
         const filedObj = importField.find((item) => item.col === excelDataKey)
         if (filedObj && filedObj.filed) {
-          rowData[filedObj.filed] = excelData[i][excelDataKey]
+          if (Object.prototype.toString.call(excelData[i][excelDataKey]) === '[object Object]') {
+            rowData[filedObj.filed] = excelData[i][excelDataKey].result
+          } else {
+            rowData[filedObj.filed] = excelData[i][excelDataKey]
+          }
         }
       }
       rowData.tenantId = userInfo.tenantId
@@ -138,7 +140,6 @@ export class ExcelService {
         await callback(rowData, userInfo)
         success++
       } catch (e) {
-        console.log(e)
         failed.push({ row: i + 1, data: rowData, error: e.message })
       }
     }
@@ -307,11 +308,6 @@ export class ExcelService {
     workbook.created = new Date()
     // 添加工作表
     const worksheet = workbook.addWorksheet(sheetName)
-    const rows = [[5, 'Bob', new Date()]]
-
-    // add new rows and return them as array of row objects
-    worksheet.addRows(rows)
-
     if (headerColumns.length > 0) {
       // 设置列头
       const columnsData = headerColumns.map((column) => {
@@ -428,7 +424,7 @@ export class ExcelService {
    * 导入模板下载
    * @param userInfo
    */
-  async exportTemplate(serviceName: string, userInfo: User) {
+  async exportTemplate(serviceName: string, removeField: string[], userInfo: User) {
     try {
       const res = await this.excelRepository.findOne({
         where: {
@@ -437,6 +433,10 @@ export class ExcelService {
         },
         select: ['importField', 'importTemplateField', 'sheetName'],
       })
+      let importField: any[] = JSON.parse(res.importField)
+      if (removeField && removeField.length > 0) {
+        importField = JSON.parse(res.importField).filter((item) => !removeField.includes(item.filed))
+      }
       const options: ExportExcelParamsType = {
         style: {
           font: {
@@ -457,7 +457,7 @@ export class ExcelService {
             right: { style: 'thin', color: { argb: '9e9e9e' } },
           },
         },
-        headerColumns: JSON.parse(res.importField),
+        headerColumns: importField,
         sheetName: res.sheetName,
         tableData: [],
       }

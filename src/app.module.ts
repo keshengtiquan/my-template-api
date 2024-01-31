@@ -24,6 +24,7 @@ import { ProjectLogModule } from './project-log/project-log.module'
 import { ScheduleModule } from '@nestjs/schedule'
 import { TaskModule } from './task/task.module'
 import { AnalyseModule } from './analyse/analyse.module';
+import { OnlyofficeModule } from './onlyoffice/onlyoffice.module';
 
 @Module({
   imports: [
@@ -84,6 +85,7 @@ import { AnalyseModule } from './analyse/analyse.module';
     ProjectLogModule,
     TaskModule,
     AnalyseModule,
+    OnlyofficeModule,
   ],
   controllers: [ExcelController],
   providers: [MyLoggerService],

@@ -162,7 +162,11 @@ export class ExcelController {
    */
   @Post('/template')
   @Auth()
-  async exportTemplate(@Body('serviceName') serviceName: string, @UserInfo() userInfo: User) {
-    return await this.excelService.exportTemplate(serviceName, userInfo)
+  async exportTemplate(
+    @Body('serviceName') serviceName: string,
+    @Body('removeField') removeField: string[],
+    @UserInfo() userInfo: User,
+  ) {
+    return await this.excelService.exportTemplate(serviceName, removeField, userInfo)
   }
 }

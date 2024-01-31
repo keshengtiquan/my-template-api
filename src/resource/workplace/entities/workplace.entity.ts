@@ -25,7 +25,7 @@ export class WorkPlace {
   @Column({ type: 'varchar', nullable: false, length: 100, name: 'workplace_code' })
   workPlaceCode: string
 
-  @Column({ type: 'varchar', nullable: false, length: 100, name: 'workplace_name' })
+  @Column({ type: 'varchar', nullable: false, length: 100, name: 'workplace_name', unique: true })
   workPlaceName: string
 
   @Column({ type: 'enum', enum: WorkPlaceType, default: WorkPlaceType.STATION, name: 'workplace_type' })

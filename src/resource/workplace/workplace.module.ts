@@ -8,9 +8,11 @@ import { ExcelModule } from '../../excel/excel.module'
 import { List } from '../list/entities/list.entity'
 import { WorkPlaceList } from './entities/workplace.list.entity'
 import { ExportExcel } from '../../excel/entities/export.excel.entity'
+import { ListModule } from '../list/list.module'
+import { DeptModule } from '../../sys/dept/dept.module'
 
 @Module({
-  imports: [TypeOrmModule.forFeature([WorkPlace, Excel, List, WorkPlaceList, ExportExcel]), ExcelModule],
+  imports: [TypeOrmModule.forFeature([WorkPlace, Excel, List, WorkPlaceList, ExportExcel]), ExcelModule, ListModule],
   controllers: [WorkplaceController],
   providers: [WorkplaceService],
 })

@@ -5,7 +5,7 @@ import { InjectRepository } from '@nestjs/typeorm'
 import { WorkPlace, WorkPlaceType } from './entities/workplace.entity'
 import { Repository } from 'typeorm'
 import { Order } from '../../types'
-import { ExportFileService, ImportFileService, ManagementGroup } from '../../enmus'
+import { ExportFileService, ImportFileService, ManagementGroup, WorkPlaceTypeEnum } from '../../enmus'
 import { UpdateWorkplaceDto } from './dto/update-workplace.dto'
 import { Excel } from '../../excel/entities/excel.entity'
 import { ExcelService } from '../../excel/excel.service'
@@ -15,6 +15,8 @@ import Decimal from 'decimal.js'
 import { MyLoggerService } from '../../common/my-logger/my-logger.service'
 import { ExportExcel } from '../../excel/entities/export.excel.entity'
 import { excelOption } from '../../utils/exportExcelOption'
+import { ListService } from '../list/list.service'
+import * as Exceljs from 'exceljs'
 
 @Injectable()
 export class WorkplaceService {
@@ -32,6 +34,8 @@ export class WorkplaceService {
   private excelService: ExcelService
   @InjectRepository(ExportExcel)
   private exportExcelRepository: Repository<ExportExcel>
+  @Inject()
+  private listService: ListService
 
   /**
    * 创建工点
@@ -170,8 +174,8 @@ export class WorkplaceService {
 
   /**
    * 工点关联清单
-   * @param id
-   * @param listIds
+   * @param id 工点ID
+   * @param listIds 清单id
    * @param userInfo
    */
   async relevanceList(id: string, listIds: string[], userInfo: User) {
@@ -398,25 +402,33 @@ export class WorkplaceService {
                sc_work_place AS wp ON wp.id = wpl.work_placeId and wp.tenant_id = '${userInfo.tenantId}'
           GROUP BY list.list_code
           ORDER BY list.serial_number ASC
-          limit ${(current - 1) * pageSize}, ${pageSize}`
+              limit ${(current - 1) * pageSize}, ${pageSize}`
       const total = `SELECT COUNT(*) AS total
-                     FROM (
-                              SELECT list.list_code
-                              FROM sc_list AS list
-                                       LEFT JOIN sc_work_place_list AS wpl ON wpl.list_id = list.id
-                                       LEFT JOIN sc_work_place AS wp ON wp.id = wpl.work_placeId
-                              GROUP BY list.list_code
-                          ) AS subquery;`
+                     FROM (SELECT list.list_code
+                           FROM sc_list AS list
+                                    LEFT JOIN sc_work_place_list AS wpl ON wpl.list_id = list.id
+                                    LEFT JOIN sc_work_place AS wp ON wp.id = wpl.work_placeId
+                           GROUP BY list.list_code) AS subquery;`
       const totalNumber = await this.workPlaceListRepository.query(total)
       const list = await this.workPlaceListRepository.query(finalSql)
       return {
-        results: list,
+        results: list.map((item) => {
+          let allotQuantities = 0
+          for (const itemKey in item) {
+            if (itemKey.endsWith('_quantities')) {
+              allotQuantities = Number(Decimal.add(Number(item[itemKey]), allotQuantities))
+            }
+          }
+          return {
+            allotQuantities,
+            ...item,
+          }
+        }),
         current,
         pageSize,
         total: Number(totalNumber[0].total),
       }
     } catch (e) {
-      console.log(e)
       throw new BadRequestException('查询工点列表失败')
     }
   }
@@ -436,6 +448,7 @@ export class WorkplaceService {
       throw new BadRequestException('删除工点下关联的清单失败')
     }
   }
+
   /**
    * 根据清单获取工点
    * @param listId
@@ -493,5 +506,228 @@ export class WorkplaceService {
       console.log(e)
       throw new BadRequestException('导出失败')
     }
+  }
+
+  /**
+   * 上传关联清单
+   * @param body
+   * @param userInfo
+   */
+  async uploadRelevance(file: Express.Multer.File, userInfo: User) {
+    function conditionCheckFunc(data, importField) {
+      const col: number[] = []
+      importField.map((item: any, index: number) => {
+        if (item.filed === 'allQuantities' || item.filed === 'listCode' || item.filed === 'workPlaceId') {
+          col.push(index)
+        }
+      })
+      const filedArr = Object.keys(data)
+      const checkList = col.map((item: any) => data[filedArr[item]])
+      return checkList.some((item) => item === '' || item === undefined || item === null || item === 0)
+    }
+
+    return await this.excelService.excelImport(
+      file,
+      userInfo,
+      ImportFileService.WORKPLACELISTRELEVANCESERVICE,
+      this.uploadRelevanceExcel.bind(this),
+      conditionCheckFunc,
+    )
+  }
+
+  /**
+   * 上传工点清单
+   * @param data
+   * @param userInfo
+   */
+  async uploadRelevanceExcel(data: any, userInfo: User) {
+    // console.log(data)
+    const listId = await this.listService.transitionIdOrName(data.listCode, userInfo)
+    const workPlaceId = await this.transitionWorkPlaceIdOrName(data.workPlaceId, userInfo)
+    const [relData] = await this.relevanceList(workPlaceId, [listId], userInfo)
+    // console.log(relData)
+    if (relData && relData.id) {
+      await this.updateQuantities(relData.id, data.allQuantities, data.leftQuantities, data.rightQuantities, userInfo)
+    } else {
+      const { id } = await this.workPlaceListRepository.findOne({
+        where: {
+          workPlaceId: relData.workPlaceId,
+          listId: relData.listId,
+        },
+        select: ['id'],
+      })
+      await this.updateQuantities(id, data.allQuantities, data.leftQuantities, data.rightQuantities, userInfo)
+    }
+  }
+
+  /**
+   * 工点ID和名称互转
+   * @param filed
+   * @param userInfo
+   */
+  async transitionWorkPlaceIdOrName(filed: string, userInfo: User) {
+    const name = await this.workPlaceRepository.findOne({
+      where: {
+        id: filed,
+        tenantId: userInfo.tenantId,
+      },
+    })
+    if (name) {
+      return name.workPlaceName
+    }
+    const id = await this.workPlaceRepository.findOne({
+      where: {
+        workPlaceName: filed,
+        tenantId: userInfo.tenantId,
+      },
+    })
+    if (id) {
+      return id.id
+    }
+    throw new BadRequestException('请输入正确的工点名称或ID')
+  }
+
+  /**
+   * 导出多级表头
+   * @param userInfo
+   */
+  async exportMultilevelHeader(userInfo: User) {
+    //固定列
+    const columnsData: any[] = [
+      { col: 'A', filed: 'serial_number', excelFiled: '序号', remarks: '' },
+      { col: 'B', filed: 'list_code', excelFiled: '项目编码', remarks: '' },
+      { col: 'C', filed: 'list_name', excelFiled: '项目名称', remarks: '' },
+      { col: 'D', filed: 'list_characteristic', excelFiled: '项目特征', remarks: '' },
+      { col: 'E', filed: 'unit', excelFiled: '单位', remarks: '' },
+      { col: 'F', filed: 'quantities', excelFiled: '工程量', remarks: '' },
+      { col: 'G', filed: 'allotQuantities', excelFiled: '合计', remarks: '' },
+    ]
+    const workPlaceList = await this.workPlaceRepository.find({
+      where: {
+        tenantId: userInfo.tenantId,
+      },
+    })
+    //动态列
+    workPlaceList.forEach((item) => {
+      const obj: any = {}
+      if (item.workPlaceType === WorkPlaceTypeEnum.STATION) {
+        obj.col = this.excelService.columnIndexToColumnLetter(columnsData.length + 1)
+        obj.filed = `${item.workPlaceCode}_all_quantities`
+        obj.excelFiled = `${item.workPlaceName}`
+        obj.remarks = ''
+        obj.type = WorkPlaceTypeEnum.STATION
+        columnsData.push(obj)
+      } else if (item.workPlaceType === WorkPlaceTypeEnum.SECTION) {
+        columnsData.push({
+          col: this.excelService.columnIndexToColumnLetter(columnsData.length + 1),
+          filed: `${item.workPlaceCode}_left_quantities`,
+          excelFiled: [item.workPlaceName, `左线`],
+          remarks: '',
+          type: WorkPlaceTypeEnum.SECTION,
+        })
+        columnsData.push({
+          col: this.excelService.columnIndexToColumnLetter(columnsData.length + 1),
+          filed: `${item.workPlaceCode}_right_quantities`,
+          excelFiled: [item.workPlaceName, `右线`],
+          remarks: '',
+          type: WorkPlaceTypeEnum.SECTION,
+        })
+      }
+    })
+    // 创建工作簿
+    const workbook = new Exceljs.Workbook()
+    workbook.creator = userInfo.nickName
+    workbook.created = new Date()
+    // 添加工作表
+    const worksheet = workbook.addWorksheet('Sheet1')
+    const columns: any[] = []
+    //设置表头 合并单元格
+    for (let i = 0; i < columnsData.length; i++) {
+      columns.push({
+        header: columnsData[i].excelFiled,
+        key: columnsData[i].filed,
+        width: 20,
+      })
+      if (columnsData[i].type !== WorkPlaceTypeEnum.SECTION) {
+        worksheet.mergeCells(`${columnsData[i].col}1: ${columnsData[i].col}2`)
+      }
+    }
+    const mergeCol = columnsData.filter((item) => item.type === WorkPlaceTypeEnum.SECTION)
+    for (let i = 0; i < mergeCol.length; i = i + 2) {
+      worksheet.mergeCells(`${mergeCol[i].col}1: ${mergeCol[i + 1].col}1`)
+    }
+    worksheet.columns = columns
+
+    //设置表头数据
+    const total = `SELECT COUNT(*) AS total
+                   FROM (SELECT list.list_code
+                         FROM sc_list AS list
+                                  LEFT JOIN sc_work_place_list AS wpl ON wpl.list_id = list.id
+                                  LEFT JOIN sc_work_place AS wp ON wp.id = wpl.work_placeId
+                         GROUP BY list.list_code) AS subquery;`
+    const [totalData] = await this.listRepository.query(total)
+    const { results } = await this.getWorkPlaceRelevanceCollectList(1, totalData.total, 'serialNumber', 'ASC', userInfo)
+
+    if (results)
+      worksheet.addRows(
+        results.map((item) => {
+          const {
+            serial_number,
+            list_code,
+            list_characteristic,
+            list_name,
+            unit,
+            quantities,
+            allotQuantities,
+            ...other
+          } = item
+          const obj = { serial_number, list_code, list_characteristic, list_name, unit, quantities, allotQuantities }
+          for (const otherKey in other) {
+            if (other[otherKey] === '0.00') {
+              obj[otherKey] = null
+            } else {
+              obj[otherKey] = Number(other[otherKey])
+            }
+          }
+          return obj
+        }),
+      )
+    const style = {
+      font: {
+        size: 10,
+        bold: true,
+        color: { argb: 'ffffff' },
+      },
+      alignment: { vertical: 'middle', horizontal: 'center' },
+      fill: {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: '808080' },
+      },
+      border: {
+        top: { style: 'thin', color: { argb: '9e9e9e' } },
+        left: { style: 'thin', color: { argb: '9e9e9e' } },
+        bottom: { style: 'thin', color: { argb: '9e9e9e' } },
+        right: { style: 'thin', color: { argb: '9e9e9e' } },
+      },
+    }
+    const headerRow = worksheet.getRows(1, 2)
+    headerRow!.forEach((row) => {
+      row.eachCell({ includeEmpty: true }, (cell) => {
+        cell.style = style as Partial<Exceljs.Style>
+      })
+    })
+
+    worksheet.columns.forEach((column) => {
+      column.alignment = style.alignment as Partial<Exceljs.Alignment>
+    })
+    const dataLength = totalData.total as number
+    const tabeRows = worksheet.getRows(1, dataLength + 2)
+    tabeRows!.forEach((row) => {
+      row.eachCell({ includeEmpty: true }, (cell) => {
+        cell.border = style.border as Partial<Exceljs.Borders>
+      })
+    })
+    return await workbook.xlsx.writeBuffer()
   }
 }
