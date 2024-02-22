@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common'
 import { Cron, CronExpression } from '@nestjs/schedule'
 import { ProjectLogService } from '../project-log/project-log.service'
+import * as dayjs from 'dayjs'
 
 @Injectable()
 export class TaskService {
@@ -11,7 +12,9 @@ export class TaskService {
     name: 'generateLog',
     timeZone: 'Asia/Shanghai',
   })
+  // @Cron(CronExpression.EVERY_10_SECONDS)
   async generateLogTask() {
-    await this.projectLogService.generateLog()
+    const date = dayjs(new Date()).format('YYYY-MM-DD')
+    await this.projectLogService.generateLog(date)
   }
 }

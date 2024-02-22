@@ -3,7 +3,7 @@ import { AppModule } from './app.module'
 import { HttpExceptionFilter } from './filter/http-exception.filter'
 import { ValidationPipe } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
-import { IS_DEV } from './utils'
+import { getEnv } from './utils'
 import { NestExpressApplication } from '@nestjs/platform-express'
 
 async function bootstrap() {
@@ -20,5 +20,6 @@ async function bootstrap() {
   await app.listen(configService.get('nest_server_port'))
 }
 bootstrap().then(() => {
+  console.log(getEnv() === 'dev')
   console.log(`启动成功`)
 })

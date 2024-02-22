@@ -15,6 +15,7 @@ export enum ImportFileService {
   PROJECTIMPORT = 'projectListImport',
   WORKPLACEIMPORT = 'WorkPlaceImport',
   WORKPLACELISTRELEVANCESERVICE = 'WorkPlaceListRelevanceService',
+  DIVISIONIMPORT = 'DivisionImport',
 }
 
 export enum ExportFileService {
@@ -31,4 +32,12 @@ export enum DeptTypeEnum {
 export enum WorkPlaceTypeEnum {
   STATION = 'station',
   SECTION = 'section',
+}
+
+export enum DivisionTypeEnum {
+  UNITPROJECT = '单位工程',
+  SUBUNITPROJECT = '子单位工程',
+  SEGMENTPROJECT = '分部工程',
+  SUBSEGMENTPROJECT = '子分部工程',
+  SUBITEMPROJECT = '分项工程',
 }

@@ -1,4 +1,4 @@
-import { IsNotEmpty } from 'class-validator'
+import { IsNotEmpty, MaxLength } from 'class-validator'
 
 export class CreateListDto {
   @IsNotEmpty()
@@ -7,6 +7,7 @@ export class CreateListDto {
   listCode: string
   listName: string
   listCharacteristic: string
+  @MaxLength(10, { message: '长度不能超过10' })
   unit: string
   quantities: number
   @IsNotEmpty()
@@ -17,4 +18,5 @@ export class CreateListDto {
   createBy: string
   updateBy: string
   createDept: string
+  currentSection: string
 }

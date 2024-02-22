@@ -26,6 +26,7 @@ import { Dept } from '../../sys/dept/entities/dept.entity'
 import { DeptTypeEnum } from '../../enmus'
 import { Order } from '../../types'
 import { DeptService } from '../../sys/dept/dept.service'
+import { ProjectLogDetail } from '../../project-log/entities/project-log-detail.entity'
 
 @Injectable()
 export class IssuedService {
@@ -43,6 +44,7 @@ export class IssuedService {
 
   /**
    * 生成计划
+   * 生成要判断任务是否已经完成，完成的不生成
    * @param createIssuedDto
    */
   async generatePlan(createIssuedDto: CreateIssuedDto, userInfo: User) {
@@ -51,7 +53,12 @@ export class IssuedService {
       .createQueryBuilder('list')
       .leftJoin(GanttList, 'gl', 'gl.listId = list.id')
       .leftJoin(Gantt, 'g', 'g.id = gl.ganttId')
-      .select('list.id', 'listId')
+      .leftJoin(ProjectLogDetail, 'pld', 'pld.list_id = list.id')
+      .select([
+        'list.id as listId',
+        'list.quantities as quantities',
+        'COALESCE(CAST(SUM(pld.completion_quantity)AS DECIMAL(18, 2)),0) as completionQuantity',
+      ])
       .where('(g.start_date BETWEEN :startDate AND :endDate)', {
         startDate: planTime.startDate,
         endDate: planTime.endDate,
@@ -61,9 +68,9 @@ export class IssuedService {
         endDate: planTime.endDate,
       })
       .orWhere(':startDate BETWEEN g.start_date AND g.end_date', { startDate: planTime.startDate })
-      // .where('g.startDate >=:startDate', { startDate: planTime.startDate })
-      // .andWhere('g.startDate <=:endDate', { endDate: planTime.endDate })
       .andWhere('list.tenantId =:tenantId', { tenantId: userInfo.tenantId })
+      .groupBy('list.id')
+      .addGroupBy('list.quantities')
     const workAreaQueryBuilder = this.deptRepository
       .createQueryBuilder('dept')
       .select('dept.id', 'workAreaId')
@@ -74,26 +81,31 @@ export class IssuedService {
       const listIds = await listQueryBuilder.getRawMany()
       const workAreaIds = await workAreaQueryBuilder.getRawMany()
       const data: any[] = []
-      listIds.forEach((listId) => {
-        workAreaIds.forEach((workAreaId) => {
-          data.push({
-            planType: createIssuedDto.planType,
-            planName: planTime.name,
-            listId: listId.listId,
-            workAreaId: workAreaId.workAreaId,
-            year: planTime.year,
-            quarter: planTime.quarter,
-            month: planTime.month,
-            week: planTime.week,
-            startDate: planTime.startDate,
-            endDate: planTime.endDate,
-            createBy: userInfo.userName,
-            updateBy: userInfo.userName,
-            createDept: userInfo.deptId,
-            tenantId: userInfo.tenantId,
+      console.log(listIds)
+      listIds
+        .filter((item) => {
+          return item.quantities > item.completionQuantity
+        })
+        .forEach((listId) => {
+          workAreaIds.forEach((workAreaId) => {
+            data.push({
+              planType: createIssuedDto.planType,
+              planName: planTime.name,
+              listId: listId.listId,
+              workAreaId: workAreaId.workAreaId,
+              year: planTime.year,
+              quarter: planTime.quarter,
+              month: planTime.month,
+              week: planTime.week,
+              startDate: planTime.startDate,
+              endDate: planTime.endDate,
+              createBy: userInfo.userName,
+              updateBy: userInfo.userName,
+              createDept: userInfo.deptId,
+              tenantId: userInfo.tenantId,
+            })
           })
         })
-      })
       return await this.issuedRepository.manager.transaction(async (manager) => {
         await this.issuedRepository.delete({
           tenantId: userInfo.tenantId,

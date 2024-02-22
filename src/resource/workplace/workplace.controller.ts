@@ -11,6 +11,7 @@ import { WorkPlaceType } from './entities/workplace.entity'
 import { UtcToLocalInterceptor } from '../../interceptor/utc2Local.interceptor'
 import { UpdateWorkplaceDto } from './dto/update-workplace.dto'
 import { FileInterceptor } from '@nestjs/platform-express'
+import { FileNameEncodePipe } from '../../common/pipe/file-name-encode-pipe'
 
 @Controller('workplace')
 export class WorkplaceController {
@@ -106,7 +107,7 @@ export class WorkplaceController {
   @Post('/upload')
   @Auth()
   @UseInterceptors(FileInterceptor('file'))
-  async upload(@UploadedFile() file: Express.Multer.File, @UserInfo() userInfo: User) {
+  async upload(@UploadedFile(new FileNameEncodePipe()) file: Express.Multer.File, @UserInfo() userInfo: User) {
     return await this.workplaceService.upload(file, userInfo)
   }
 
@@ -119,7 +120,7 @@ export class WorkplaceController {
   @Post('/export')
   @Auth()
   async export(@Body('current') current: number, @Body('pageSize') pageSize: number, @UserInfo() userInfo: User) {
-    return Result.success(await this.workplaceService.export(current, pageSize, userInfo), '工点导出成功')
+    return await this.workplaceService.export(current, pageSize, userInfo)
   }
 
   /**
@@ -199,10 +200,18 @@ export class WorkplaceController {
     @Query('pageSize', new DefaultValuePipe(10), generateParseIntPipe('pageSize')) pageSize: number,
     @Query('sortField', new DefaultValuePipe('serialNumber')) sortField: string,
     @Query('sortOrder', new DefaultValuePipe('ASC')) sortOrder: Order,
+    @Query('sectionalEntry') sectionalEntry: string,
     @UserInfo() userInfo: User,
   ) {
     return Result.success(
-      await this.workplaceService.getWorkPlaceRelevanceCollectList(current, pageSize, sortField, sortOrder, userInfo),
+      await this.workplaceService.getWorkPlaceRelevanceCollectList(
+        current,
+        pageSize,
+        sortField,
+        sortOrder,
+        sectionalEntry,
+        userInfo,
+      ),
       '查询关联的清单列表成功',
     )
   }
@@ -242,17 +251,32 @@ export class WorkplaceController {
   @Post('/uploadRelevance')
   @Auth()
   @UseInterceptors(FileInterceptor('file'))
-  async uploadRelevance(@UploadedFile() file: Express.Multer.File, @UserInfo() userInfo: User) {
+  async uploadRelevance(@UploadedFile(new FileNameEncodePipe()) file: Express.Multer.File, @UserInfo() userInfo: User) {
     return await this.workplaceService.uploadRelevance(file, userInfo)
   }
 
   /**
-   * 导出多级表头
+   * 导出表头
    * @param userInfo
    */
   @Post('/exportMultilevelHeader')
   @Auth()
-  async exportMultilevelHeader(@UserInfo() userInfo: User) {
-    return await this.workplaceService.exportMultilevelHeader(userInfo)
+  async exportMultilevelHeader(@Body('sectionalEntry') sectionalEntry: string, @UserInfo() userInfo: User) {
+    return await this.workplaceService.exportMultilevelHeader(sectionalEntry, userInfo)
+  }
+
+  /**
+   * 导入关联清单（汇总）
+   * @param body
+   * @param userInfo
+   */
+  @Post('/uploadRelevanceList')
+  @Auth()
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadRelevanceList(
+    @UploadedFile(new FileNameEncodePipe()) file: Express.Multer.File,
+    @UserInfo() userInfo: User,
+  ) {
+    return await this.workplaceService.uploadRelevanceList(file, userInfo)
   }
 }

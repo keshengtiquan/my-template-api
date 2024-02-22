@@ -7,9 +7,10 @@ import { ProjectLogDetail } from './entities/project-log-detail.entity'
 import { Tenant } from '../sys/tenant/entities/tenant.entity'
 import { DeptModule } from '../sys/dept/dept.module'
 import { Issued } from '../plan/issued/entities/issued.entity'
+import { Gantt } from '../plan/gantt/entities/gantt.entity'
 
 @Module({
-  imports: [TypeOrmModule.forFeature([ProjectLog, ProjectLogDetail, Tenant, Issued]), DeptModule],
+  imports: [TypeOrmModule.forFeature([ProjectLog, ProjectLogDetail, Tenant, Gantt, Issued]), DeptModule],
   controllers: [ProjectLogController],
   providers: [ProjectLogService],
   exports: [ProjectLogService],

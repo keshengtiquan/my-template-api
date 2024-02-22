@@ -7,10 +7,10 @@ export enum WorkPlaceType {
 
 @Entity('sc_work_place')
 export class WorkPlace {
-  @PrimaryColumn({ comment: '主键', name: 'id', type: 'bigint' })
+  @Column({ comment: '主键', name: 'id', type: 'bigint' })
   id: string
 
-  @Column({
+  @PrimaryColumn({
     type: 'varchar',
     default: '000000',
     name: 'tenant_id',
@@ -22,10 +22,10 @@ export class WorkPlace {
   createDept: string
 
   //字段开始
-  @Column({ type: 'varchar', nullable: false, length: 100, name: 'workplace_code' })
+  @PrimaryColumn({ type: 'varchar', nullable: false, length: 100, name: 'workplace_code' })
   workPlaceCode: string
 
-  @Column({ type: 'varchar', nullable: false, length: 100, name: 'workplace_name', unique: true })
+  @Column({ type: 'varchar', nullable: false, length: 100, name: 'workplace_name' })
   workPlaceName: string
 
   @Column({ type: 'enum', enum: WorkPlaceType, default: WorkPlaceType.STATION, name: 'workplace_type' })

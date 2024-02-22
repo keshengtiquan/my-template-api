@@ -136,3 +136,24 @@ export const addTreeLeaf = (data: any[]) => {
     return obj
   })
 }
+
+/**
+ * @description 广度优先遍历，根据唯一uniqueId找当前节点信息
+ * @param tree 树
+ * @param uniqueId 唯一uniqueId
+ * @returns 当前节点信息
+ */
+export const getNodeByUniqueId = (tree: any[], uniqueId: number | string, field: string): any => {
+  if (!Array.isArray(tree)) {
+    console.warn('menuTree must be an array')
+    return []
+  }
+  if (!tree || tree.length === 0) return []
+  const item = tree.find((node) => node[field] === uniqueId)
+  if (item) return item
+  const childrenList = tree
+    .filter((node) => node.children)
+    .map((i) => i.children)
+    .flat(1) as unknown
+  return getNodeByUniqueId(childrenList as any[], uniqueId, field)
+}

@@ -10,6 +10,7 @@ import { Order } from '../../types'
 import { UtcToLocalInterceptor } from '../../interceptor/utc2Local.interceptor'
 import { CreateListDto } from './dto/create-list.dto'
 import { UpdateListDto } from './dto/update-list.dto'
+import { FileNameEncodePipe } from '../../common/pipe/file-name-encode-pipe'
 
 @Controller('list')
 export class ListController {
@@ -23,7 +24,7 @@ export class ListController {
   @Post('/upload')
   @Auth()
   @UseInterceptors(FileInterceptor('file'))
-  async upload(@UploadedFile() file: Express.Multer.File, @UserInfo() userInfo: User) {
+  async upload(@UploadedFile(new FileNameEncodePipe()) file: Express.Multer.File, @UserInfo() userInfo: User) {
     return await this.listService.upload(file, userInfo)
   }
 
@@ -32,9 +33,10 @@ export class ListController {
    */
   @Get('/export')
   @Auth()
-  async export(@Query('current') current: number, @Query('pageSize') pageSize: number, @UserInfo() userInfo: User) {
-    return Result.success(await this.listService.export(current, pageSize, userInfo))
+  async export(@Query('sectionalEntry') sectionalEntry: string, @UserInfo() userInfo: User) {
+    return await this.listService.export(sectionalEntry, userInfo)
   }
+
   /**
    * 查询清单列表
    * @param current
@@ -49,7 +51,7 @@ export class ListController {
   async getlist(
     @Query('current', new DefaultValuePipe(1), generateParseIntPipe('current')) current: number,
     @Query('pageSize', new DefaultValuePipe(10), generateParseIntPipe('pageSize')) pageSize: number,
-    @Query('sortField', new DefaultValuePipe('serialNumber')) sortField: string,
+    @Query('sortField', new DefaultValuePipe('createTime')) sortField: string,
     @Query('sortOrder', new DefaultValuePipe('ASC')) sortOrder: Order,
     @Query('listCode') listCode: string,
     @Query('listName') listName: string,
@@ -95,6 +97,7 @@ export class ListController {
       await this.listService.getlistExclude(current, pageSize, workPlaceId, sortField, sortOrder, userInfo),
     )
   }
+
   /**
    * 获取清单
    * @param id
@@ -303,5 +306,68 @@ export class ListController {
   @Auth()
   async setFocus(@Body('id') id: string, @Body('isFocusList') isFocusList: boolean, @UserInfo() userInfo: User) {
     return Result.success(await this.listService.setFocus(id, isFocusList, userInfo))
+  }
+
+  /**
+   * 批量删除清单
+   * @param ids
+   * @param userInfo
+   */
+  @Post('/batchDelete')
+  @Auth()
+  async batchDelete(@Body('ids') ids: string[], @UserInfo() userInfo: User) {
+    return Result.success(await this.listService.batchDelete(ids, userInfo))
+  }
+
+  /**
+   * 获取三量对比表
+   * @param current 当前页
+   * @param pageSize 页面大小
+   * @param sortField 排序字段
+   * @param sortOrder 排序方式
+   * @param listCode 项目编码
+   * @param listName 项目名称
+   * @param listCharacteristic 项目特征
+   * @param sectionalEntry 分部分项
+   * @param userInfo 用户信息
+   * @returns 清单列表
+   */
+  @Get('/listCompare')
+  @Auth()
+  async listCompare(
+    @Query('current', new DefaultValuePipe(1), generateParseIntPipe('current')) current: number,
+    @Query('pageSize', new DefaultValuePipe(10), generateParseIntPipe('pageSize')) pageSize: number,
+    @Query('sortField', new DefaultValuePipe('create_time')) sortField: string,
+    @Query('sortOrder', new DefaultValuePipe('ASC')) sortOrder: Order,
+    @Query('listCode') listCode: string,
+    @Query('listName') listName: string,
+    @Query('listCharacteristic') listCharacteristic: string,
+    @Query('sectionalEntry') sectionalEntry: string,
+    @UserInfo() userInfo: User,
+  ) {
+    return Result.success(
+      await this.listService.listCompare(
+        current,
+        pageSize,
+        sortField,
+        sortOrder,
+        listCode,
+        listName,
+        listCharacteristic,
+        sectionalEntry,
+        userInfo,
+      ),
+    )
+  }
+
+  /**
+   * 更新图纸量
+   * @param id
+   * @param designQuantities
+   */
+  @Post('/update/listCompare')
+  @Auth()
+  async updateListCompare(@Body('id') id: string, @Body('designQuantities') designQuantities: number) {
+    return Result.success(await this.listService.updateListCompare(id, designQuantities))
   }
 }

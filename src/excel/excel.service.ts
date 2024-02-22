@@ -19,6 +19,25 @@ export interface ExportExcelParamsType {
   sheetName: string //工作表名
 }
 
+export interface ExportExcelType {
+  serviceName: string
+  tableData: any[]
+  extraStyle?: {
+    col: number
+    row: number
+    alignment: Partial<Exceljs.Alignment>
+  }
+}
+
+export interface ExcelImportType {
+  file: Express.Multer.File
+  userInfo: User
+  serviceName?: string
+  callback: (...args: any[]) => Promise<any>
+  conditionCheckFunc?: (data: object, p?: any[]) => boolean
+  customOptions?: { sheetName: string; skipRows: number; importField: string }
+}
+
 @Injectable()
 export class ExcelService {
   @InjectRepository(Excel)
@@ -49,10 +68,24 @@ export class ExcelService {
       if (rowNumber < skipRows) {
         return
       }
-      const rowData = {}
-      row.eachCell({ includeEmpty: true }, (cell, col) => {
+      const rowData = { rowNumber: rowNumber }
+      row.eachCell({ includeEmpty: true }, (cell: any, col) => {
         const key = this.columnIndexToColumnLetter(col)
-        rowData[key] = cell.value
+        switch (cell.type) {
+          case 8:
+            const value = []
+            cell.value.richText.forEach((item) => {
+              value.push(item.text)
+            })
+            rowData[key] = value.join('')
+            break
+          case 6:
+            rowData[key] = cell.value.result
+            break
+          default:
+            rowData[key] = cell.value
+            break
+        }
       })
       rows.push(rowData)
     })
@@ -101,18 +134,24 @@ export class ExcelService {
    * @param callback 创建数据的方法
    * @param conditionCheckFunc 条件校验方法
    */
-  async excelImport(
-    file: Express.Multer.File,
-    userInfo: User,
-    serviceName: string,
-    callback: (...args: any[]) => Promise<any>,
-    conditionCheckFunc?: (data: object, p?: any[]) => boolean,
-  ) {
+  async excelImport(params: ExcelImportType) {
+    const { file, userInfo, serviceName, callback, conditionCheckFunc, customOptions } = params
     let success = 0
     const failed = []
-    const option = await this.excelRepository.findOne({
-      where: { serviceName },
-    })
+    let option: { sheetName: string; skipRows: number; importField: string } = {
+      sheetName: 'Sheet1',
+      skipRows: 1,
+      importField: '',
+    }
+    if (customOptions) {
+      option.skipRows = customOptions.skipRows
+      option.importField = customOptions.importField
+      option.sheetName = customOptions.sheetName
+    } else {
+      option = await this.excelRepository.findOne({
+        where: { serviceName, tenantId: userInfo.tenantId },
+      })
+    }
     const excelData = await this.parseExcel(file, option.sheetName, option.skipRows)
     const importField = JSON.parse(option.importField)
     for (let i = 0; i < excelData.length; i++) {
@@ -123,28 +162,28 @@ export class ExcelService {
       for (const excelDataKey in excelData[i]) {
         const filedObj = importField.find((item) => item.col === excelDataKey)
         if (filedObj && filedObj.filed) {
-          if (Object.prototype.toString.call(excelData[i][excelDataKey]) === '[object Object]') {
-            rowData[filedObj.filed] = excelData[i][excelDataKey].result
-          } else {
-            rowData[filedObj.filed] = excelData[i][excelDataKey]
-          }
+          rowData[filedObj.filed] = excelData[i][excelDataKey]
         }
       }
       rowData.tenantId = userInfo.tenantId
       rowData.createBy = userInfo.userName
       rowData.updateBy = userInfo.userName
       rowData.createDept = userInfo.deptId
-
       try {
         //在这里使用传入的方法并使用rowData
         await callback(rowData, userInfo)
         success++
       } catch (e) {
-        failed.push({ row: i + 1, data: rowData, error: e.message })
+        failed.push({
+          row: excelData[i]['rowNumber'],
+          data: rowData,
+          error: e.message,
+        })
       }
     }
     return {
       success,
+      fileName: file.originalname,
       failed: failed.length,
       failedList: failed,
     }
@@ -185,7 +224,6 @@ export class ExcelService {
     try {
       return await this.excelRepository.save(excel)
     } catch (e) {
-      console.log(e)
       throw new BadRequestException('模版创建失败')
     }
   }
@@ -268,7 +306,6 @@ export class ExcelService {
         },
       )
     } catch (e) {
-      console.log(e)
       throw new BadRequestException('更新失败')
     }
   }
@@ -292,7 +329,6 @@ export class ExcelService {
     try {
       return await this.exportExcelRepository.save(exportExcel)
     } catch (e) {
-      console.log(e)
       throw new BadRequestException('创建导出模版失败')
     }
   }
@@ -300,14 +336,37 @@ export class ExcelService {
   /**
    * 导出Excel
    */
-  async exportExcel(options: ExportExcelParamsType, userInfo: User) {
-    const { sheetName, style, headerColumns, tableData } = options
+  async exportExcel(options: ExportExcelType, userInfo: User) {
+    const { serviceName, tableData, extraStyle } = options
+    const excelHeader = await this.exportExcelRepository.findOne({
+      where: { exportService: serviceName, tenantId: userInfo.tenantId },
+    })
+    const style = {
+      font: {
+        size: 10,
+        bold: true,
+        color: { argb: 'ffffff' },
+      },
+      alignment: { vertical: 'middle', horizontal: 'center' },
+      fill: {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: '808080' },
+      },
+      border: {
+        top: { style: 'thin', color: { argb: '9e9e9e' } },
+        left: { style: 'thin', color: { argb: '9e9e9e' } },
+        bottom: { style: 'thin', color: { argb: '9e9e9e' } },
+        right: { style: 'thin', color: { argb: '9e9e9e' } },
+      },
+    }
     // 创建工作簿
     const workbook = new Exceljs.Workbook()
     workbook.creator = userInfo.nickName
     workbook.created = new Date()
     // 添加工作表
-    const worksheet = workbook.addWorksheet(sheetName)
+    const worksheet = workbook.addWorksheet(excelHeader.sheetName)
+    const headerColumns = JSON.parse(excelHeader.exportFields)
     if (headerColumns.length > 0) {
       // 设置列头
       const columnsData = headerColumns.map((column) => {
@@ -315,7 +374,7 @@ export class ExcelService {
         return {
           header: column.excelFiled,
           key: column.filed,
-          width: isNaN(width) ? 20 : width / 10,
+          width: width,
         }
       })
       worksheet.columns = columnsData
@@ -325,6 +384,7 @@ export class ExcelService {
         cell.style = style as Partial<Exceljs.Style>
       })
     }
+    console.log(tableData)
     //设置行数据
     if (tableData.length > 0) {
       // 将传入的数据格式化为exceljs可使用的数据格式
@@ -338,21 +398,20 @@ export class ExcelService {
       })
       // 添加行
       if (data) worksheet.addRows(data)
-
       // 获取每列数据，依次对齐
       worksheet.columns.forEach((column) => {
         column.alignment = style.alignment as Partial<Exceljs.Alignment>
       })
       // 设置每行的边框
-      const dataLength = data.length as number
-      const tabeRows = worksheet.getRows(2, dataLength + 1)
-      tabeRows.forEach((row) => {
-        row.eachCell({ includeEmpty: true }, (cell) => {
+      worksheet.eachRow({ includeEmpty: true }, (row, rowNumber) => {
+        row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
           cell.border = style.border as Partial<Exceljs.Borders>
+          if (extraStyle && colNumber === extraStyle.col && rowNumber >= extraStyle.row) {
+            cell.alignment = extraStyle.alignment
+          }
         })
       })
     }
-    await workbook.xlsx.writeFile('aaa.xlsx')
     return await workbook.xlsx.writeBuffer()
   }
 

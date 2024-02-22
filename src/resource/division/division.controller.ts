@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, UseInterceptors, Query, DefaultValuePipe } from '@nestjs/common'
+import { Controller, Get, Post, Body, UseInterceptors, Query, DefaultValuePipe, UploadedFile } from '@nestjs/common'
 import { DivisionService } from './division.service'
 import { CreateDivisionDto } from './dto/create-division.dto'
 import { UpdateDivisionDto } from './dto/update-division.dto'
@@ -9,6 +9,8 @@ import { User } from '../../sys/user/entities/user.entity'
 import { UtcToLocalInterceptor } from '../../interceptor/utc2Local.interceptor'
 import { AddListDto } from './dto/add-list.dto'
 import { generateParseIntPipe } from '../../utils'
+import { FileNameEncodePipe } from '../../common/pipe/file-name-encode-pipe'
+import { FileInterceptor } from '@nestjs/platform-express'
 
 @Controller('division')
 export class DivisionController {
@@ -106,5 +108,38 @@ export class DivisionController {
   @Auth()
   async deleteDivisionList(@Body('ids') ids: string[]) {
     return Result.success(await this.divisionService.deleteDivisionList(ids), '删除成功')
+  }
+
+  /**
+   * 根据类型获取分部分项
+   * @param divisionType
+   * @param userInfo
+   */
+  @Get('/getSectional')
+  @Auth()
+  async getSectional(@Query('divisionType') divisionType: string, @UserInfo() userInfo: User) {
+    return Result.success(await this.divisionService.getSectional(divisionType, userInfo), '获取成功')
+  }
+
+  /**
+   * 上传分部分项划分
+   * @param file
+   * @param userInfo
+   */
+  @Post('/upload')
+  @Auth()
+  @UseInterceptors(FileInterceptor('file'))
+  async upload(@UploadedFile(new FileNameEncodePipe()) file: Express.Multer.File, @UserInfo() userInfo: User) {
+    return await this.divisionService.upload(file, userInfo)
+  }
+
+  /**
+   * 导出分部分项
+   * @param userInfo
+   */
+  @Post('/exportDivision')
+  @Auth()
+  async exportDivision(@UserInfo() userInfo: User) {
+    return await this.divisionService.exportDivision(userInfo)
   }
 }

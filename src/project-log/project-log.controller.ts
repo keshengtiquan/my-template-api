@@ -13,12 +13,12 @@ export class ProjectLogController {
   constructor(private readonly projectLogService: ProjectLogService) {}
 
   /**
-   * 自动生成日志
+   * 手动生成日志
    */
   @Post('/generateLog')
   @Auth()
-  async generateLog() {
-    return Result.success(await this.projectLogService.generateLog())
+  async generateLog(@Body('date') date: string) {
+    return Result.success(await this.projectLogService.generateLog(date))
   }
 
   /**
@@ -88,16 +88,12 @@ export class ProjectLogController {
   @Post('/saveLog')
   @Auth()
   async saveLog(
-    @Body('logDetailId') logDetailId: string,
     @Body('logId') logId: string,
-    @Body('workPlace') workPlace: string[],
-    @Body('quantity') quantity: number,
+    @Body('listId') listId: string,
+    @Body('workPlaceData') workPlaceData: { quantity: number; workPlace: string[]; workAreaId: string }[],
     @UserInfo() userInfo: User,
   ) {
-    return Result.success(
-      await this.projectLogService.saveLog(logDetailId, logId, workPlace, quantity, userInfo),
-      '填写成功',
-    )
+    return Result.success(await this.projectLogService.saveLog(logId, listId, workPlaceData, userInfo), '填写成功')
   }
 
   /**
@@ -126,7 +122,36 @@ export class ProjectLogController {
    */
   @Post('/deleteList')
   @Auth()
-  async deleteList(@Body('id') id: string) {
-    return Result.success(await this.projectLogService.deleteList(id))
+  async deleteList(@Body('logId') logId: string, @Body('listId') listId: string) {
+    return Result.success(await this.projectLogService.deleteList(logId, listId))
+  }
+
+  /**
+   * @description 查询同一清单的完成列表
+   * @param listId 清单ID
+   * @param logId 日志ID
+   * @param userInfo 用户信息
+   * @returns 列表
+   */
+  @Get('/getByListId')
+  @Auth()
+  async getByListId(
+    @Query('listId') listId: string,
+    @Query('logId') logId: string,
+    @Query('mode', new DefaultValuePipe('list')) mode: string,
+    @UserInfo() userInfo: User,
+  ) {
+    return Result.success(await this.projectLogService.getByListId(listId, logId, mode, userInfo))
+  }
+
+  /**
+   *
+   * @param id 日志详情ID
+   * @param userInfo 用户信息
+   */
+  @Post('/deleteById')
+  @Auth()
+  async deleteById(@Body('id') id: string, @UserInfo() userInfo: User) {
+    return Result.success(await this.projectLogService.deleteById(id, userInfo), '删除成功')
   }
 }

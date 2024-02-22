@@ -14,7 +14,6 @@ import { WorkPlaceList } from './entities/workplace.list.entity'
 import Decimal from 'decimal.js'
 import { MyLoggerService } from '../../common/my-logger/my-logger.service'
 import { ExportExcel } from '../../excel/entities/export.excel.entity'
-import { excelOption } from '../../utils/exportExcelOption'
 import { ListService } from '../list/list.service'
 import * as Exceljs from 'exceljs'
 
@@ -42,6 +41,13 @@ export class WorkplaceService {
    * @param createWorkplaceDto
    */
   async create(createWorkplaceDto: CreateWorkplaceDto, userInfo: User) {
+    const workplace = await this.workPlaceRepository.findOne({
+      where: { workPlaceName: createWorkplaceDto.workPlaceName, tenantId: userInfo.tenantId },
+    })
+    if (workplace) {
+      console.log(workplace)
+      throw new BadRequestException('该工点已存在')
+    }
     const workPlace = new WorkPlace()
     workPlace.workPlaceCode = createWorkplaceDto.workPlaceCode
     workPlace.workPlaceName = createWorkplaceDto.workPlaceName
@@ -63,7 +69,7 @@ export class WorkplaceService {
     try {
       return await this.workPlaceRepository.save(workPlace)
     } catch (e) {
-      throw new BadRequestException('创建工点失败')
+      throw new BadRequestException(e.message)
     }
   }
 
@@ -84,33 +90,70 @@ export class WorkplaceService {
     workPlaceType: WorkPlaceType,
     userInfo: User,
   ) {
+    // const queryBuilder = this.workPlaceRepository
+    //   .createQueryBuilder('wp')
+    //   .leftJoin(WorkPlaceList, 'wpl', 'wp.id = wpl.work_placeId')
+    //   .select([
+    //     'wp.workplace_code as workPlaceCode',
+    //     'wp.sort_number as sortNumber',
+    //     'wp.workplace_name as workPlaceName',
+    //     "CASE WHEN wp.workplace_type = 'station' THEN '车站' WHEN wp.workplace_type = 'section' THEN '区间' ELSE wp.workplace_type END AS workPlaceType",
+    //     'wp.create_by as createBy',
+    //     'wp.create_time as createTime',
+    //     'wp.update_by as updateBy',
+    //     'wp.update_time as updateTime',
+    //     'wp.id as id',
+    //     'CAST(SUM(wpl.combined_price)AS DECIMAL(18, 2)) as outputValue',
+    //   ])
+    //   .where('wp.tenant_id =:tenantId', { tenantId: userInfo.tenantId })
+    //   .groupBy('wp.id')
+    //   .addGroupBy('wp.workplace_code')
+    //   .addGroupBy('wp.sort_number')
+    //   .addGroupBy('wp.workplace_name')
+    //   .orderBy(`wp.${sortField}`, sortOrder)
+    //
+    // if (workPlaceType) {
+    //   queryBuilder.andWhere('wp.workplace_type = :workPlaceType', { workPlaceType })
+    // }
+    const listSql = `SELECT wp.id as id,
+                            COALESCE(CAST(SUM(wpl.combined_price) AS DECIMAL(18, 2)),0) as outputValue
+                     FROM sc_work_place wp
+                              LEFT JOIN sc_work_place_list wpl on wpl.work_placeId = wp.id
+                     WHERE wp.tenant_id=${userInfo.tenantId} GROUP BY wp.id`
     const queryBuilder = this.workPlaceRepository
-      .createQueryBuilder('workplace')
+      .createQueryBuilder('wp')
       .skip((current - 1) * pageSize)
       .take(pageSize)
-      .orderBy(`workplace.${sortField}`, sortOrder)
-    if (userInfo.tenantId !== ManagementGroup.ID) {
-      queryBuilder.where('workplace.tenantId = :tenantId', { tenantId: userInfo.tenantId })
-    }
+      .where('wp.tenantId =:tenantId', { tenantId: userInfo.tenantId })
+      .orderBy(`wp.${sortField}`, sortOrder)
     if (workPlaceType) {
-      queryBuilder.andWhere('workplace.workPlaceType = :workPlaceType', { workPlaceType })
+      queryBuilder.andWhere('wp.workplace_type = :workPlaceType', { workPlaceType })
     }
     try {
+      const outputValuelist = await this.workPlaceRepository.query(listSql)
+      console.log(outputValuelist)
+      for (const item of outputValuelist) {
+        await this.workPlaceRepository.update(
+          { id: item.id },
+          {
+            outputValue: item.outputValue,
+          },
+        )
+      }
       const [list, total] = await queryBuilder.getManyAndCount()
-      const data = list.map((item) => {
-        const { workPlaceType, ...other } = item
-        return {
-          ...other,
-          workPlaceType: workPlaceType === WorkPlaceType.STATION ? '车站' : '区间',
-        }
-      })
       return {
-        results: data,
+        results: list.map((item) => {
+          return {
+            ...item,
+            workPlaceType: item.workPlaceType === 'station' ? '车站' : '区间',
+          }
+        }),
         current,
         pageSize,
-        total,
+        total: total,
       }
     } catch (e) {
+      console.log(e)
       throw new BadRequestException('查询工点列表失败')
     }
   }
@@ -156,7 +199,9 @@ export class WorkplaceService {
    */
   async delete(id: string) {
     try {
-      return await this.workPlaceRepository.delete({ id })
+      await this.workPlaceListRepository.delete({ workPlaceId: id })
+      await this.workPlaceRepository.delete({ id })
+      return '删除成功'
     } catch (e) {
       console.log(e)
       throw new BadRequestException('删除工点失败')
@@ -169,7 +214,17 @@ export class WorkplaceService {
    * @param userInfo
    */
   async upload(file: Express.Multer.File, userInfo: User) {
-    return this.excelService.excelImport(file, userInfo, ImportFileService.WORKPLACEIMPORT, this.create.bind(this))
+    function conditionCheckFunc(data) {
+      console.log(data)
+      return !data.B || !data.C || !data.D
+    }
+    return this.excelService.excelImport({
+      file,
+      userInfo,
+      serviceName: ImportFileService.WORKPLACEIMPORT,
+      callback: this.create.bind(this),
+      conditionCheckFunc: conditionCheckFunc,
+    })
   }
 
   /**
@@ -254,16 +309,6 @@ export class WorkplaceService {
     }
     try {
       const list = await queryBuilder.getRawMany()
-      const totalCombinedPrice = list.reduce((total, item) => {
-        return total + parseFloat(item.combinedPrice)
-      }, 0)
-      await this.workPlaceRepository.update(
-        { id },
-        {
-          outputValue: totalCombinedPrice,
-        },
-      )
-
       return {
         results: list,
         current,
@@ -373,19 +418,23 @@ export class WorkplaceService {
     pageSize: number,
     sortField: string,
     sortOrder: string,
+    sectionalEntry: string,
     userInfo: User,
   ) {
     try {
-      const workPlaceList = await this.workPlaceRepository.find()
+      const workPlaceList = await this.workPlaceRepository.find({
+        where: {
+          tenantId: userInfo.tenantId,
+        },
+      })
       let dynamicColumnsResult = ''
 
       workPlaceList.forEach((item) => {
         dynamicColumnsResult += `
-      CAST(MAX(CASE WHEN wp.workplace_code= '${item.workPlaceCode}' THEN wpl.all_quantities ELSE 0 END)AS DECIMAL(10, 2)) as '${item.workPlaceCode}_all_quantities',
-      CAST(MAX(CASE WHEN wp.workplace_code= '${item.workPlaceCode}' THEN wpl.left_quantities ELSE 0 END)AS DECIMAL(10, 2)) as '${item.workPlaceCode}_left_quantities',
-      CAST(MAX(CASE WHEN wp.workplace_code= '${item.workPlaceCode}' THEN wpl.right_quantities ELSE 0 END)AS DECIMAL(10, 2)) as '${item.workPlaceCode}_right_quantities',`
+      CAST(MAX(CASE WHEN wp.workplace_code= '${item.workPlaceCode}' THEN wpl.all_quantities ELSE 0 END)AS DECIMAL(18, 2)) as '${item.workPlaceCode}_all_quantities',
+      CAST(MAX(CASE WHEN wp.workplace_code= '${item.workPlaceCode}' THEN wpl.left_quantities ELSE 0 END)AS DECIMAL(18, 2)) as '${item.workPlaceCode}_left_quantities',
+      CAST(MAX(CASE WHEN wp.workplace_code= '${item.workPlaceCode}' THEN wpl.right_quantities ELSE 0 END)AS DECIMAL(18, 2)) as '${item.workPlaceCode}_right_quantities',`
       })
-
       const dynamicColumns = dynamicColumnsResult.slice(0, -1)
       const finalSql = `
           SELECT list.serial_number,
@@ -394,21 +443,26 @@ export class WorkplaceService {
                  list.list_characteristic,
                  list.quantities,
                  list.unit,
+                 list.unit_price,
                  ${dynamicColumns}
           FROM sc_list AS list
                    LEFT JOIN
                sc_work_place_list AS wpl ON wpl.list_id = list.id and wpl.tenant_id = '${userInfo.tenantId}'
                    LEFT JOIN
                sc_work_place AS wp ON wp.id = wpl.work_placeId and wp.tenant_id = '${userInfo.tenantId}'
-          GROUP BY list.list_code
+          WHERE list.sectional_entry like '%${sectionalEntry}%'
+          GROUP BY list.serial_number,
+                   list.list_code,
+                   list.list_name,
+                   list.list_characteristic,
+                   list.quantities,
+                   list.unit_price,
+                   list.unit
           ORDER BY list.serial_number ASC
               limit ${(current - 1) * pageSize}, ${pageSize}`
-      const total = `SELECT COUNT(*) AS total
-                     FROM (SELECT list.list_code
-                           FROM sc_list AS list
-                                    LEFT JOIN sc_work_place_list AS wpl ON wpl.list_id = list.id
-                                    LEFT JOIN sc_work_place AS wp ON wp.id = wpl.work_placeId
-                           GROUP BY list.list_code) AS subquery;`
+      const total = `SELECT count(list.list_code) as total
+                     FROM sc_list AS list
+                     WHERE list.sectional_entry like '%${sectionalEntry}%'`
       const totalNumber = await this.workPlaceListRepository.query(total)
       const list = await this.workPlaceListRepository.query(finalSql)
       return {
@@ -429,6 +483,7 @@ export class WorkplaceService {
         total: Number(totalNumber[0].total),
       }
     } catch (e) {
+      console.log(e)
       throw new BadRequestException('查询工点列表失败')
     }
   }
@@ -489,19 +544,16 @@ export class WorkplaceService {
    */
   async export(current: number, pageSize: number, userInfo: User) {
     try {
-      const excelHeader = await this.exportExcelRepository.findOne({
-        where: { exportService: ExportFileService.WORKPLACEEXPORT, tenantId: userInfo.tenantId },
+      const tableData = await this.workPlaceRepository.find({
+        where: { tenantId: userInfo.tenantId },
       })
-      const queryBuilder = this.workPlaceRepository.createQueryBuilder('wp').orderBy('wp.sortNumber', 'ASC')
-      if (current && pageSize) {
-        queryBuilder.skip((current - 1) * pageSize)
-        queryBuilder.take(pageSize)
-      }
-      queryBuilder.where('wp.tenantId = :tenantId', {
-        tenantId: userInfo.tenantId,
-      })
-      const listData = await queryBuilder.getMany()
-      return excelOption(listData, excelHeader)
+      return await this.excelService.exportExcel(
+        {
+          serviceName: ExportFileService.WORKPLACEEXPORT,
+          tableData: tableData,
+        },
+        userInfo,
+      )
     } catch (e) {
       console.log(e)
       throw new BadRequestException('导出失败')
@@ -526,13 +578,13 @@ export class WorkplaceService {
       return checkList.some((item) => item === '' || item === undefined || item === null || item === 0)
     }
 
-    return await this.excelService.excelImport(
+    return await this.excelService.excelImport({
       file,
       userInfo,
-      ImportFileService.WORKPLACELISTRELEVANCESERVICE,
-      this.uploadRelevanceExcel.bind(this),
-      conditionCheckFunc,
-    )
+      serviceName: ImportFileService.WORKPLACELISTRELEVANCESERVICE,
+      callback: this.uploadRelevanceExcel.bind(this),
+      conditionCheckFunc: conditionCheckFunc,
+    })
   }
 
   /**
@@ -566,15 +618,6 @@ export class WorkplaceService {
    * @param userInfo
    */
   async transitionWorkPlaceIdOrName(filed: string, userInfo: User) {
-    const name = await this.workPlaceRepository.findOne({
-      where: {
-        id: filed,
-        tenantId: userInfo.tenantId,
-      },
-    })
-    if (name) {
-      return name.workPlaceName
-    }
     const id = await this.workPlaceRepository.findOne({
       where: {
         workPlaceName: filed,
@@ -588,23 +631,28 @@ export class WorkplaceService {
   }
 
   /**
-   * 导出多级表头
+   * 导出汇总excel
    * @param userInfo
    */
-  async exportMultilevelHeader(userInfo: User) {
+  async exportMultilevelHeader(sectionalEntry: string, userInfo: User) {
+    console.log(sectionalEntry)
     //固定列
     const columnsData: any[] = [
-      { col: 'A', filed: 'serial_number', excelFiled: '序号', remarks: '' },
-      { col: 'B', filed: 'list_code', excelFiled: '项目编码', remarks: '' },
-      { col: 'C', filed: 'list_name', excelFiled: '项目名称', remarks: '' },
-      { col: 'D', filed: 'list_characteristic', excelFiled: '项目特征', remarks: '' },
-      { col: 'E', filed: 'unit', excelFiled: '单位', remarks: '' },
-      { col: 'F', filed: 'quantities', excelFiled: '工程量', remarks: '' },
-      { col: 'G', filed: 'allotQuantities', excelFiled: '合计', remarks: '' },
+      { col: 'A', filed: 'serial_number', excelFiled: '序号', remarks: '', width: 10 },
+      { col: 'B', filed: 'list_code', excelFiled: '项目编码', remarks: '', width: 16 },
+      { col: 'C', filed: 'list_name', excelFiled: '项目名称', remarks: '', width: 20 },
+      { col: 'D', filed: 'list_characteristic', excelFiled: '项目特征', remarks: '', width: 20 },
+      { col: 'E', filed: 'unit', excelFiled: '单位', remarks: '', width: 10 },
+      { col: 'F', filed: 'unit_price', excelFiled: '单价', remarks: '', width: 10 },
+      { col: 'G', filed: 'quantities', excelFiled: '工程量', remarks: '', width: 10 },
+      { col: 'H', filed: 'allotQuantities', excelFiled: '合计', remarks: '', width: 10 },
     ]
     const workPlaceList = await this.workPlaceRepository.find({
       where: {
         tenantId: userInfo.tenantId,
+      },
+      order: {
+        sortNumber: 'ASC',
       },
     })
     //动态列
@@ -615,6 +663,7 @@ export class WorkplaceService {
         obj.filed = `${item.workPlaceCode}_all_quantities`
         obj.excelFiled = `${item.workPlaceName}`
         obj.remarks = ''
+        obj.width = 15
         obj.type = WorkPlaceTypeEnum.STATION
         columnsData.push(obj)
       } else if (item.workPlaceType === WorkPlaceTypeEnum.SECTION) {
@@ -623,6 +672,7 @@ export class WorkplaceService {
           filed: `${item.workPlaceCode}_left_quantities`,
           excelFiled: [item.workPlaceName, `左线`],
           remarks: '',
+          width: 10,
           type: WorkPlaceTypeEnum.SECTION,
         })
         columnsData.push({
@@ -630,6 +680,7 @@ export class WorkplaceService {
           filed: `${item.workPlaceCode}_right_quantities`,
           excelFiled: [item.workPlaceName, `右线`],
           remarks: '',
+          width: 10,
           type: WorkPlaceTypeEnum.SECTION,
         })
       }
@@ -646,7 +697,7 @@ export class WorkplaceService {
       columns.push({
         header: columnsData[i].excelFiled,
         key: columnsData[i].filed,
-        width: 20,
+        width: columnsData[i].width,
       })
       if (columnsData[i].type !== WorkPlaceTypeEnum.SECTION) {
         worksheet.mergeCells(`${columnsData[i].col}1: ${columnsData[i].col}2`)
@@ -659,16 +710,20 @@ export class WorkplaceService {
     worksheet.columns = columns
 
     //设置表头数据
-    const total = `SELECT COUNT(*) AS total
-                   FROM (SELECT list.list_code
-                         FROM sc_list AS list
-                                  LEFT JOIN sc_work_place_list AS wpl ON wpl.list_id = list.id
-                                  LEFT JOIN sc_work_place AS wp ON wp.id = wpl.work_placeId
-                         GROUP BY list.list_code) AS subquery;`
+    const total = `SELECT count(list.list_code) as total
+                   FROM sc_list AS list
+                   WHERE list.sectional_entry like '%${sectionalEntry}%'`
     const [totalData] = await this.listRepository.query(total)
-    const { results } = await this.getWorkPlaceRelevanceCollectList(1, totalData.total, 'serialNumber', 'ASC', userInfo)
+    const { results } = await this.getWorkPlaceRelevanceCollectList(
+      1,
+      totalData.total,
+      'serialNumber',
+      'ASC',
+      sectionalEntry,
+      userInfo,
+    )
 
-    if (results)
+    if (results) {
       worksheet.addRows(
         results.map((item) => {
           const {
@@ -692,6 +747,7 @@ export class WorkplaceService {
           return obj
         }),
       )
+    }
     const style = {
       font: {
         size: 10,
@@ -722,12 +778,149 @@ export class WorkplaceService {
       column.alignment = style.alignment as Partial<Exceljs.Alignment>
     })
     const dataLength = totalData.total as number
-    const tabeRows = worksheet.getRows(1, dataLength + 2)
+    const tabeRows = worksheet.getRows(1, Number(dataLength) + 2)
     tabeRows!.forEach((row) => {
       row.eachCell({ includeEmpty: true }, (cell) => {
         cell.border = style.border as Partial<Exceljs.Borders>
       })
     })
+    worksheet.eachRow({ includeEmpty: true }, (row, rowNumber) => {
+      if (rowNumber < 3) {
+        return
+      }
+      worksheet.getCell(`H${rowNumber}`).value = {
+        formula: `SUM(${columnsData[8].col}${rowNumber}: ${columnsData[columnsData.length - 1].col}${rowNumber})`,
+      }
+      worksheet.getCell(`D${rowNumber}`).alignment = {
+        wrapText: true,
+        vertical: 'middle',
+        horizontal: 'left',
+      }
+    })
+
     return await workbook.xlsx.writeBuffer()
+  }
+
+  /**
+   * 导入关联清单（汇总）
+   * @param body
+   * @param userInfo
+   */
+  async uploadRelevanceList(file: Express.Multer.File, userInfo: User) {
+    const importField: any[] = [
+      { col: 'A', filed: 'serial_number', excelFiled: '序号', remarks: '' },
+      { col: 'B', filed: 'list_code', excelFiled: '项目编码', remarks: '' },
+      { col: 'C', filed: 'list_name', excelFiled: '项目名称', remarks: '' },
+      { col: 'D', filed: 'list_characteristic', excelFiled: '项目特征', remarks: '' },
+      { col: 'E', filed: 'unit', excelFiled: '单位', remarks: '' },
+      { col: 'F', filed: 'unit_price', excelFiled: '单价', remarks: '' },
+      { col: 'G', filed: 'quantities', excelFiled: '工程量', remarks: '' },
+      { col: 'H', filed: 'allotQuantities', excelFiled: '合计', remarks: '' },
+    ]
+    const workPlaceList = await this.workPlaceRepository.find({
+      where: {
+        tenantId: userInfo.tenantId,
+      },
+      order: {
+        sortNumber: 'ASC',
+      },
+    })
+    workPlaceList.forEach((item) => {
+      if (item.workPlaceType === WorkPlaceTypeEnum.STATION) {
+        importField.push({
+          col: this.excelService.columnIndexToColumnLetter(importField.length + 1),
+          filed: `${item.workPlaceCode}-all_quantities`,
+          excelFiled: `${item.workPlaceName}`,
+          remarks: '',
+        })
+      } else if (item.workPlaceType === WorkPlaceTypeEnum.SECTION) {
+        importField.push({
+          col: this.excelService.columnIndexToColumnLetter(importField.length + 1),
+          filed: `${item.workPlaceCode}-left_quantities`,
+          excelFiled: `${item.workPlaceName}左线`,
+          remarks: '',
+        })
+        importField.push({
+          col: this.excelService.columnIndexToColumnLetter(importField.length + 1),
+          filed: `${item.workPlaceCode}-right_quantities`,
+          excelFiled: `${item.workPlaceName}右线`,
+          remarks: '',
+        })
+      }
+    })
+    // console.log(file)
+    return await this.excelService.excelImport({
+      file,
+      userInfo,
+      callback: this.uploadRelevanceFun.bind(this),
+      customOptions: {
+        sheetName: 'Sheet1',
+        skipRows: 3,
+        importField: JSON.stringify(importField),
+      },
+    })
+  }
+
+  async uploadRelevanceFun(data: any, userInfo: User) {
+    console.log('data', data)
+    if (data.quantities < data.allotQuantities) {
+      throw new BadRequestException('分配数量不能大于总数量')
+    }
+    const workPlaceIds = await this.workPlaceRepository.find({
+      where: { tenantId: userInfo.tenantId },
+      select: ['id', 'workPlaceCode'],
+    })
+    const createData = []
+    const listId = await this.listService.transitionIdOrName(data.list_code, userInfo)
+    const workPlaceKeys = Object.keys(data).filter((item) => item.endsWith('_quantities'))
+    const workPlaceData = []
+    workPlaceKeys.forEach((item) => {
+      const [workPlaceCode, quantities] = item.split('-')
+      const obj = {}
+      obj['workPlaceCode'] = workPlaceCode
+      obj['all_quantities'] = quantities === 'all_quantities' ? data[item] : 0
+      obj['left_quantities'] = quantities === 'left_quantities' ? data[item] : 0
+      obj['right_quantities'] = quantities === 'right_quantities' ? data[item] : 0
+      workPlaceData.push(obj)
+    })
+    const newData = []
+    workPlaceData.forEach((item) => {
+      const index = newData.findIndex((i) => i.workPlaceCode === item.workPlaceCode)
+      if (index !== -1) {
+        const { workPlaceCode, all_quantities, left_quantities, right_quantities } = newData[index]
+        newData[index] = {
+          workPlaceCode: workPlaceCode,
+          all_quantities: all_quantities + item.all_quantities,
+          left_quantities: left_quantities + item.left_quantities,
+          right_quantities: right_quantities + item.right_quantities,
+        }
+      } else {
+        newData.push(item)
+      }
+    })
+    newData.forEach((item) => {
+      const obj = {
+        tenantId: userInfo.tenantId,
+        createDept: userInfo.deptId,
+        createBy: userInfo.userName,
+        updateBy: userInfo.userName,
+        allQuantities: Number(new Decimal(item.all_quantities).plus(item.left_quantities).plus(item.right_quantities)),
+        leftQuantities: item.left_quantities,
+        rightQuantities: item.right_quantities,
+        workPlaceId: workPlaceIds.find((w) => w.workPlaceCode === item.workPlaceCode).id,
+        listId: listId,
+        combinedPrice: Number(
+          Decimal.mul(
+            new Decimal(item.all_quantities).plus(item.left_quantities).plus(item.right_quantities),
+            data.unit_price,
+          ),
+        ),
+      }
+      if (obj.allQuantities > 0) {
+        createData.push(obj)
+      }
+    })
+    console.log(createData)
+    await this.workPlaceListRepository.save(createData)
   }
 }

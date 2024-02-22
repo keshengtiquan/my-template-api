@@ -17,13 +17,13 @@ export class ProjectLogDetail {
   createDept: string
 
   //字段开始
-  @Column({ type: 'varchar', nullable: true, name: 'log_id' })
+  @Column({ type: 'varchar', name: 'log_id' })
   logId: string
 
-  @Column({ type: 'varchar', nullable: true, name: 'work_area_id', comment: '工区作业队ID' })
+  @Column({ type: 'varchar', name: 'work_area_id', comment: '工区作业队ID' })
   workAreaId: string
 
-  @Column({ type: 'varchar', nullable: true, name: 'list_id', comment: '清单ID' })
+  @Column({ type: 'varchar', name: 'list_id', comment: '清单ID' })
   listId: string
 
   @Column({ type: 'varchar', nullable: true, name: 'work_place_id', comment: '工作地点ID' })

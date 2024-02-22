@@ -11,9 +11,9 @@ import { Order } from '../types'
 import { DeptService } from '../sys/dept/dept.service'
 import { endOfWeek, format, startOfWeek } from 'date-fns'
 import { Issued } from '../plan/issued/entities/issued.entity'
-import { List } from '../resource/list/entities/list.entity'
-import { Dept } from '../sys/dept/entities/dept.entity'
-import { WorkPlace } from '../resource/workplace/entities/workplace.entity'
+import { Gantt } from '../plan/gantt/entities/gantt.entity'
+import { Dept } from 'src/sys/dept/entities/dept.entity'
+import { WorkPlace } from 'src/resource/workplace/entities/workplace.entity'
 import Decimal from 'decimal.js'
 @Injectable()
 export class ProjectLogService {
@@ -30,11 +30,13 @@ export class ProjectLogService {
   private readonly tenantRepository: Repository<Tenant>
   @InjectRepository(Issued)
   private readonly issuedRepository: Repository<Issued>
+  @InjectRepository(Gantt)
+  private readonly ganttRepository: Repository<Gantt>
   /**
    * 自动生成日志
    */
-  async generateLog() {
-    const fillDate = dayjs(new Date()).format('YYYY-MM-DD')
+  async generateLog(date: string) {
+    const fillDate = dayjs(date).format('YYYY-MM-DD')
     try {
       const tenants = await this.tenantRepository.find({
         select: ['id'],
@@ -44,10 +46,20 @@ export class ProjectLogService {
           fillDate: fillDate,
         },
       })
+      const planDate = await this.ganttRepository
+        .createQueryBuilder('g')
+        .select(['MIN(g.start_date) as startDate', 'MAX(g.end_date) as endDate', 'g.tenant_id as tenantId'])
+        .groupBy('g.tenant_id')
+        .getRawMany()
       const data = []
       tenants.forEach((tenant) => {
         const hasLogForTenant = logs.some((log) => log.tenantId === tenant.id)
-        if (!hasLogForTenant) {
+        const startEndDate = planDate.find((item) => item.tenantId === tenant.id)
+        if (
+          !hasLogForTenant &&
+          startEndDate &&
+          this.isInsideTimeRange(startEndDate.startDate, startEndDate.endDate, fillDate)
+        ) {
           data.push({
             fillDate: fillDate,
             createBy: 'system',
@@ -66,6 +78,12 @@ export class ProjectLogService {
       this.loggerService.error(`生成日志失败【${e.message}】`, ProjectLog.name)
     }
   }
+  isInsideTimeRange(startDate: string, endDate: string, currentDate: string) {
+    const startDateTime = new Date(startDate).getTime()
+    const endDateTime = new Date(endDate).getTime()
+    const currentDateTime = new Date(currentDate).getTime()
+    return currentDateTime >= startDateTime && currentDateTime <= endDateTime
+  }
   /**
    * 获取日志列表
    */
@@ -81,6 +99,8 @@ export class ProjectLogService {
     const workAreaList = await this.deptService.getWorkArea(userInfo)
     const workAreaIds = workAreaList.map((item) => item.id).join(',')
     let dynamicColumnsResult = ''
+    if (workAreaList.length === 0) return []
+
     workAreaList.forEach((item) => {
       dynamicColumnsResult += `CAST(SUM(CASE WHEN pld.work_area_id= '${item.id}' THEN pld.completion_quantity * list.unit_price ELSE 0 END)AS DECIMAL(10, 2)) as '${item.id}',`
     })
@@ -156,101 +176,71 @@ export class ProjectLogService {
       const date = new Date(fillDate)
       const weekStartDate = format(startOfWeek(date, { weekStartsOn: 1 }), 'yyyy-MM-dd')
       const weekEndDate = format(endOfWeek(date, { weekStartsOn: 1 }), 'yyyy-MM-dd')
-      const weekPlanList = await this.issuedRepository.find({
-        where: {
-          planType: 'week',
-          startDate: weekStartDate,
-          endDate: weekEndDate,
-          tenantId: userInfo.tenantId,
-        },
-        select: ['listId', 'workAreaId'],
-      })
+      const workAreaData = await this.deptService.getWorkArea(userInfo)
+      const finalSql = `select distinct i.list_id, sl.quantities, t1.com
+                        from sc_issued i
+                        left join sc_list sl on i.list_id = sl.id
+                        left join (select list_id, COALESCE(SUM(completion_quantity),0) as com from sc_project_log_detail group by list_id) as t1 on t1.list_id = i.list_id
+                        where i.plan_type='week' and i.start_date='${weekStartDate}' and i.end_date='${weekEndDate}' and i.tenant_id='${userInfo.tenantId}'
+                        having if(t1.com < sl.quantities,1,0);`
+      const weekPlanList = await this.issuedRepository.query(finalSql)
       const data = []
-      weekPlanList.forEach((plan) => {
-        data.push({
-          logId: logId,
-          listId: plan.listId,
-          workAreaId: plan.workAreaId,
-          tenantId: userInfo.tenantId,
-          createBy: 'system',
-          updateBy: 'system',
-          createDept: userInfo.deptId,
+
+      workAreaData.forEach((workArea) => {
+        weekPlanList.forEach((plan) => {
+          data.push({
+            logId: logId,
+            listId: plan.list_id,
+            workAreaId: workArea.id,
+            tenantId: userInfo.tenantId,
+            createBy: 'system',
+            updateBy: 'system',
+            createDept: userInfo.deptId,
+            completionQuantity: 0,
+          })
         })
       })
       await this.projectLogDetailRepository.save(data)
     }
     //查询列表
-    const queryBuilder = this.projectLogDetailRepository
-      .createQueryBuilder('pld')
-      .select([
-        'pld.id as id',
-        'pld.id as logDetailId',
-        'pld.work_area_id as workAreaId',
-        'pld.completion_quantity as quantity',
-        'pld.work_place_id as workPlace',
-        'pld.left_quantities as leftQuantities',
-        'pld.right_quantities as rightQuantities',
-        'pld.create_by as createBy',
-        'pld.update_by as updateBy',
-        'pld.create_time as createTime',
-        'pld.update_time as updateTime',
-        'wp.workplace_name as workPlaceName',
-        'wp.workplace_type as workPlaceType',
-        'pl.id as logId',
-        'dept.dept_name as workAreaName',
-        'list.id as listId',
-        'list.serial_number as serialNumber',
-        'list.list_code as listCode',
-        'list.list_name as listName',
-        'list.list_characteristic as listCharacteristic',
-        'list.unit as unit',
-        'list.quantities as quantities',
-        'list.unit_price as unitPrice',
-      ])
-      .leftJoin(List, 'list', 'list.id = pld.list_id')
-      .leftJoin(Dept, 'dept', 'dept.id = pld.work_area_id')
-      .leftJoin(ProjectLog, 'pl', 'pl.id = pld.log_id')
-      .leftJoin(WorkPlace, 'wp', 'wp.id = pld.work_place_id')
-      .where('pld.tenant_id = :tenantId', { tenantId: userInfo.tenantId })
-      .andWhere('pld.log_id = :logId', { logId: logId })
-      .orderBy(`list.${sortField}`, sortOrder)
-      .skip((current - 1) * pageSize)
-      .take(pageSize)
+    let listSql = `SELECT   
+                            list.id                                                           as listId,
+                            list.serial_number                                                as serialNumber,
+                            list.list_code                                                    as listCode,
+                            list.list_name                                                    as listName,
+                            list.list_characteristic                                          as listCharacteristic,
+                            list.unit                                                         as unit,
+                            list.quantities                                                   as quantities,
+                            list.unit_price                                                   as unitPrice,
+                            pld.log_id                                                        as logId,
+                            MAX(pld.create_time)                                              as createTime,
+                            MAX(pld.update_time)                                              as updateTime,
+                            COALESCE(CAST(SUM(pld.completion_quantity) AS DECIMAL(18, 2)), 0) as completionQuantity
+                     FROM sc_project_log_detail pld
+                              LEFT JOIN sc_list list on pld.list_id = list.id
+                     WHERE pld.tenant_id = ${userInfo.tenantId} and pld.log_id=${logId}`
+    let totalSql = `SELECT COUNT(DISTINCT list.id) as total
+                    FROM sc_project_log_detail pld
+                             LEFT JOIN sc_list list on pld.list_id = list.id
+                    WHERE pld.tenant_id = ${userInfo.tenantId} and pld.log_id=${logId}`
     const workAreaList = await this.deptService.getWorkArea(userInfo)
     if (workAreaList.length > 0) {
       const workAreaIdList = workAreaList.map((item) => item.id)
       if (workAreaIdList.includes(workAreaId)) {
-        queryBuilder.andWhere('pld.work_area_id = :workAreaId', { workAreaId })
+        listSql += ` and pld.work_area_id = ${workAreaId}`
+        totalSql += ` and pld.work_area_id = ${workAreaId}`
       }
     }
+    listSql += ` GROUP BY listId, serialNumber, listCode, listName, listCharacteristic, unit, quantities, unitPrice,
+                              logId
+                     ORDER BY list.serial_number ASC limit ${(current - 1) * pageSize}, ${pageSize}`
     try {
-      const list = await queryBuilder.getRawMany()
-      const results = list.map((item) => {
-        const { workPlace, workPlaceName, leftQuantities, rightQuantities, ...other } = item
-        const newWorkPlace = [workPlace]
-        let newWorkPlaceName = workPlaceName
-        if (leftQuantities !== 0 && rightQuantities !== 0) {
-          newWorkPlace[1] = 'leftQuantities'
-        } else if (leftQuantities !== 0) {
-          newWorkPlace[1] = 'leftQuantities'
-          newWorkPlaceName = workPlaceName + ' / ' + '左线'
-        } else if (rightQuantities !== 0) {
-          newWorkPlace[1] = 'rightQuantities'
-          newWorkPlaceName = workPlaceName + ' / ' + '右线'
-        }
-
-        return {
-          workPlace: newWorkPlace,
-          workPlaceName: newWorkPlaceName,
-          leftQuantities,
-          rightQuantities,
-          ...other,
-        }
-      })
+      const list = await this.projectLogDetailRepository.query(listSql)
+      const [total] = await this.projectLogDetailRepository.query(totalSql)
       return {
-        results: results,
+        results: list,
         current,
-        total: await queryBuilder.getCount(),
+        total: Number(total.total),
         pageSize,
       }
     } catch (e) {
@@ -269,7 +259,12 @@ export class ProjectLogService {
    * @param completionQuantity
    * @param userInfo
    */
-  async saveLog(logDetailId: string, logId: string, workPlace: string[], quantity: number, userInfo: User) {
+  async saveLog(
+    logId: string,
+    listId: string,
+    workPlaceData: { quantity: number; workPlace: string[]; workAreaId: string }[],
+    userInfo: User,
+  ) {
     const { fillUser } = await this.projectLogRepository.findOne({
       where: { id: logId },
       select: ['fillUser'],
@@ -284,49 +279,74 @@ export class ProjectLogService {
           updateBy: userInfo.userName,
         },
       )
-      // const updateLogDetail = await manager.findOne(ProjectLogDetail, { where: { id: logDetailId } })
-      const updateLogDetail = await manager
-        .createQueryBuilder()
-        .from(ProjectLogDetail, 'pld')
-        .leftJoin(WorkPlace, 'wp', 'wp.id = pld.work_place_id')
-        .select([
-          'pld.id as id',
-          'pld.tenant_id as tenantId',
-          'pld.create_dept as createDept',
-          'pld.log_id as logId',
-          'pld.work_area_id as workAreaId',
-          'pld.list_id as listId',
-          'pld.work_place_id as workPlaceId',
-          'pld.completion_quantity as completionQuantity',
-          'pld.left_quantities as leftQuantities',
-          'pld.right_quantities as rightQuantities',
-          'pld.create_by as createBy',
-          'pld.update_by as updateBy',
-          'pld.create_time as createTime',
-          'pld.update_time as updateTime',
-          'wp.workplace_type as workPlaceType',
-        ])
-        .where('pld.id = :id', { id: logDetailId })
-        .getRawOne()
-      console.log(updateLogDetail)
-      updateLogDetail.workPlaceId = workPlace[0]
-      updateLogDetail.updateBy = userInfo.userName
-      if (updateLogDetail.workPlaceType === 'station') {
-        updateLogDetail.completionQuantity = quantity
-      } else if (updateLogDetail.workPlaceType === 'section') {
-        updateLogDetail[workPlace[1]] = quantity
-        updateLogDetail.completionQuantity = updateLogDetail.leftQuantities + updateLogDetail.rightQuantities
-      } else {
-        if (workPlace.length === 1) {
-          updateLogDetail.completionQuantity = quantity
+      await this.projectLogDetailRepository.delete({
+        logId: logId,
+        listId: listId,
+        completionQuantity: 0,
+      })
+      const mergeWorkPlace = []
+      workPlaceData.forEach((item) => {
+        const index = mergeWorkPlace.findIndex((i) => {
+          return i.workAreaId === item.workAreaId && i.workPlace[0] === item.workPlace[0]
+        })
+        // 没找到
+        if (index === -1) {
+          mergeWorkPlace.push(item)
         } else {
-          updateLogDetail[workPlace[1]] = quantity
-          updateLogDetail.completionQuantity = Number(
-            Decimal.add(updateLogDetail.leftQuantities, updateLogDetail.rightQuantities),
-          )
+          mergeWorkPlace[index].quantity = [mergeWorkPlace[index].quantity, item.quantity]
+          mergeWorkPlace[index].workPlace.push(item.workPlace[1])
         }
-      }
-      return await this.projectLogDetailRepository.save(updateLogDetail)
+      })
+      const createDate = []
+      const existLog = await this.projectLogDetailRepository.find({
+        where: {
+          tenantId: userInfo.tenantId,
+          logId: logId,
+        },
+      })
+      mergeWorkPlace.forEach((item) => {
+        let obj: any = {}
+        const log = existLog.findIndex(
+          (i) =>
+            i.tenantId === userInfo.tenantId &&
+            i.workAreaId === item.workAreaId &&
+            i.listId === listId &&
+            i.workPlaceId === item.workPlace[0],
+        )
+        if (log !== -1) {
+          obj = existLog[log]
+        } else {
+          obj = {
+            tenantId: userInfo.tenantId,
+            createDept: userInfo.deptId,
+            createBy: userInfo.userName,
+            updateBy: userInfo.userName,
+            logId: logId,
+            listId: listId,
+            workAreaId: item.workAreaId,
+            workPlaceId: item.workPlace[0],
+          }
+        }
+
+        if (item.workPlace.length === 1) {
+          obj.completionQuantity = item.quantity
+        } else if (item.workPlace.length === 2) {
+          if (!obj.leftQuantities && !obj.rightQuantities) {
+            obj.completionQuantity = item.quantity
+          } else if (obj.leftQuantities) {
+            obj.completionQuantity = Number(Decimal.add(obj.leftQuantities, item.quantity))
+          } else if (obj.rightQuantities) {
+            obj.completionQuantity = Number(Decimal.add(obj.rightQuantities, item.quantity))
+          }
+          obj[item.workPlace[1]] = item.quantity
+        } else if (item.workPlace.length === 3) {
+          obj[item.workPlace[1]] = item.quantity[0]
+          obj[item.workPlace[2]] = item.quantity[1]
+          obj.completionQuantity = Number(Decimal.add(item.quantity[0], item.quantity[1]))
+        }
+        createDate.push(obj)
+      })
+      return await this.projectLogDetailRepository.save(createDate)
     })
   }
 
@@ -372,17 +392,101 @@ export class ProjectLogService {
 
   /**
    * 删除日志的清单
-   * @param id 日志详细信息的ID
+   * @param logId 日志ID
+   * @param listId 日志清单的ID
    * @param userInfo 当前用户
    * @returns 删除成功
    */
-  async deleteList(id: string) {
+  async deleteList(logId: string, listId: string) {
     try {
-      await this.projectLogDetailRepository.delete({ id })
+      await this.projectLogDetailRepository
+        .createQueryBuilder()
+        .delete()
+        .from(ProjectLogDetail)
+        .where('logId = :logId and listId = :listId', { logId, listId })
+        .execute()
       return '删除成功'
     } catch (error) {
       this.loggerService.error(`删除日志清单失败【${error.message}】`, ProjectLog.name)
       throw new BadRequestException('删除日志清单失败')
     }
+  }
+
+  /**
+   * @description 查询同一清单的完成列表
+   * @param listId 清单ID
+   * @param logId 日志ID
+   * @param userInfo 用户信息
+   * @returns 列表
+   */
+  async getByListId(listId: string, logId: string, mode: string, userInfo: User) {
+    if (!listId) {
+      throw new BadRequestException('清单ID不能为空')
+    }
+    if (!logId) {
+      throw new BadRequestException('日志ID不能为空')
+    }
+    const data = await this.projectLogDetailRepository
+      .createQueryBuilder('pld')
+      .leftJoin(Dept, 'dept', 'dept.id = pld.work_area_id')
+      .leftJoin(WorkPlace, 'wp', 'wp.id = pld.work_place_id')
+      .select([
+        'pld.id as id',
+        'pld.work_area_id as workAreaId',
+        'pld.work_place_id as workPlaceId',
+        'dept.dept_name as deptName',
+        'wp.workplace_name as workplaceName',
+        'pld.completion_quantity as completionQuantity',
+        'pld.right_quantities as rightQuantities',
+        'pld.left_quantities as leftQuantities',
+      ])
+      .where('pld.tenant_id = :tenantId', { tenantId: userInfo.tenantId })
+      .andWhere('pld.list_id = :listId', { listId })
+      .andWhere('pld.log_id = :logId', { logId })
+      .getRawMany()
+
+    if (mode === 'list') {
+      return data
+    } else {
+      const result: { quantity: number; workPlace: string[]; workAreaId: string }[] = []
+      data.forEach((item) => {
+        if (item.completionQuantity > 0 && item.rightQuantities === 0 && item.rightQuantities === 0) {
+          // 车站情况
+          result.push({
+            quantity: item.completionQuantity,
+            workPlace: [item.workPlaceId],
+            workAreaId: item.workAreaId,
+          })
+        } else {
+          if (item.rightQuantities > 0) {
+            result.push({
+              workPlace: [item.workPlaceId, 'rightQuantities'],
+              quantity: item.rightQuantities,
+              workAreaId: item.workAreaId,
+            })
+          }
+          if (item.leftQuantities > 0) {
+            result.push({
+              workPlace: [item.workPlaceId, 'leftQuantities'],
+              quantity: item.leftQuantities,
+              workAreaId: item.workAreaId,
+            })
+          }
+        }
+      })
+      return result
+    }
+  }
+
+  /**
+   *
+   * @param id 日志详情ID
+   * @param userInfo 用户信息
+   */
+  async deleteById(id: string, userInfo: User) {
+    return await this.projectLogDetailRepository.delete({
+      id,
+      tenantId: userInfo.tenantId,
+    })
   }
 }

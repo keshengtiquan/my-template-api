@@ -25,7 +25,7 @@ export class List {
   @PrimaryColumn({ type: 'varchar', length: 64, name: 'list_code' })
   listCode: string
 
-  @Column({ type: 'varchar', length: 64, name: 'list_name' })
+  @PrimaryColumn({ type: 'varchar', length: 64, name: 'list_name' })
   listName: string
 
   @Column({ type: 'varchar', length: 255, name: 'list_characteristic' })
@@ -50,6 +50,9 @@ export class List {
 
   @Column({ type: 'boolean', default: false, name: 'is_focus_list' })
   isFocusList: boolean
+
+  @Column({ type: 'double', name: 'design_quantities' })
+  designQuantities: number
   /**
    * 表格字段结束
    */

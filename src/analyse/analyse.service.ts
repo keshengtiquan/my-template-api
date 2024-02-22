@@ -207,9 +207,9 @@ export class AnalyseService {
       .leftJoin(List, 'list', 'list.id = pld.list_id')
       .leftJoin(ProjectLog, 'pl', 'pl.id = pld.log_id')
       .select([
-        'CAST(SUM(list.combined_price)AS DECIMAL(10, 2)) as total',
-        'CAST(SUM(pld.completion_quantity * list.unit_price)AS DECIMAL(10, 2)) as complete',
-        'CAST(SUM(CASE WHEN pl.fill_date < :lastMonthEndDate THEN list.unit_price * pld.completion_quantity ELSE NULL END) AS DECIMAL(10, 2)) AS lastMonthComplete',
+        'CAST(SUM(list.combined_price)AS DECIMAL(18, 2)) as total',
+        'CAST(SUM(pld.completion_quantity * list.unit_price)AS DECIMAL(18, 2)) as complete',
+        'CAST(SUM(CASE WHEN pl.fill_date < :lastMonthEndDate THEN list.unit_price * pld.completion_quantity ELSE NULL END) AS DECIMAL(18, 2)) AS lastMonthComplete',
       ])
       .where('pld.tenant_id= :tenantId', { tenantId: userInfo.tenantId })
       .setParameter('lastMonthEndDate', format(endOfMonth(subMonths(new Date(), 1)), 'yyyy-MM-dd'))
@@ -357,7 +357,7 @@ export class AnalyseService {
         'list.serial_number as serialNumber',
         'list.list_name as listName',
         'list.quantities as quantities',
-        'COALESCE(CAST(SUM(pld.completion_quantity) as DECIMAL(10,2)),0) as complete',
+        'COALESCE(CAST(SUM(pld.completion_quantity) as DECIMAL(18,2)),0) as complete',
       ])
       .orderBy(`list.${sortField}`, sortOrder)
       .where('list.tenant_id= :tenantId', { tenantId: userInfo.tenantId })
@@ -368,8 +368,8 @@ export class AnalyseService {
 
     try {
       const list = await queryBuilder
-        .limit(pageSize)
-        .offset((current - 1) * pageSize)
+        .skip((current - 1) * pageSize)
+        .take(pageSize)
         .getRawMany()
       const total = await queryBuilder.getCount()
       console.log(total)
@@ -394,8 +394,8 @@ export class AnalyseService {
         SELECT t1.id,
                t1.division_name as name,
                t1.parent_id as parentId,
-               COALESCE(CAST(SUM(t1.output)  as DECIMAL(10,2)),0)as value,
-               COALESCE(CAST(SUM(t1.finish)as DECIMAL(10,2)),0) as finish
+               COALESCE(CAST(SUM(t1.output)  as DECIMAL(18,2)),0)as value,
+               COALESCE(CAST(SUM(t1.finish)as DECIMAL(18,2)),0) as finish
         FROM (SELECT id,
                      division_name,
                      parent_id,

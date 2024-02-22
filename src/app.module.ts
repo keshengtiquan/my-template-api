@@ -23,15 +23,18 @@ import { IssuedModule } from './plan/issued/issued.module'
 import { ProjectLogModule } from './project-log/project-log.module'
 import { ScheduleModule } from '@nestjs/schedule'
 import { TaskModule } from './task/task.module'
-import { AnalyseModule } from './analyse/analyse.module';
-import { OnlyofficeModule } from './onlyoffice/onlyoffice.module';
+import { AnalyseModule } from './analyse/analyse.module'
+import { OnlyofficeModule } from './onlyoffice/onlyoffice.module'
+import { CompletionModule } from './completion/completion.module'
+import * as path from 'path'
 
 @Module({
   imports: [
     ScheduleModule.forRoot(),
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: 'src/.env',
+      // envFilePath: 'src/.env',
+      envFilePath: path.join(__dirname, '.env'),
     }),
     TypeOrmModule.forRootAsync({
       useFactory(configService: ConfigService) {
@@ -86,6 +89,7 @@ import { OnlyofficeModule } from './onlyoffice/onlyoffice.module';
     TaskModule,
     AnalyseModule,
     OnlyofficeModule,
+    CompletionModule,
   ],
   controllers: [ExcelController],
   providers: [MyLoggerService],

@@ -1,5 +1,5 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common'
-import { ExcelService, ExportExcelParamsType } from '../../excel/excel.service'
+import { ExcelService } from '../../excel/excel.service'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Excel } from '../../excel/entities/excel.entity'
 import { Repository } from 'typeorm'
@@ -15,6 +15,7 @@ import { GanttList } from '../../plan/gantt/entities/gantt-list.entity'
 import { MyLoggerService } from '../../common/my-logger/my-logger.service'
 import { Issued } from '../../plan/issued/entities/issued.entity'
 import { ProjectLogDetail } from '../../project-log/entities/project-log-detail.entity'
+import { Division } from '../division/entities/division.entity'
 
 @Injectable()
 export class ListService {
@@ -36,19 +37,21 @@ export class ListService {
   private issuedRepository: Repository<Issued>
   @InjectRepository(ProjectLogDetail)
   private projectLogDetailRepository: Repository<ProjectLogDetail>
+  @InjectRepository(Division)
+  private divisionRepository: Repository<Division>
 
   async upload(file: Express.Multer.File, userInfo: User) {
     function conditionCheckFunc(data) {
       return typeof data.A !== 'number'
     }
 
-    return await this.excelService.excelImport(
+    return await this.excelService.excelImport({
       file,
       userInfo,
-      ImportFileService.PROJECTIMPORT,
-      this.create.bind(this),
-      conditionCheckFunc,
-    )
+      serviceName: ImportFileService.PROJECTIMPORT,
+      callback: this.create.bind(this),
+      conditionCheckFunc: conditionCheckFunc,
+    })
   }
 
   /**
@@ -140,11 +143,20 @@ export class ListService {
     list.updateBy = userInfo.userName
     list.tenantId = userInfo.tenantId
     list.createDept = userInfo.deptId
+    list.designQuantities = createListDto.quantities
+    if (createListDto.currentSection) {
+      const division = await this.divisionRepository.findOne({
+        where: { divisionName: createListDto.currentSection, tenantId: userInfo.tenantId },
+        select: ['id', 'parentNames'],
+      })
+      list.currentSection = division.id
+      list.sectionalEntry = division.parentNames
+      console.log(createListDto.currentSection, division)
+    }
     try {
       return await this.listRepository.save(list)
     } catch (e) {
-      console.log(e)
-      throw new BadRequestException('创建清单失败')
+      throw new BadRequestException(e.message)
     }
   }
 
@@ -189,48 +201,46 @@ export class ListService {
   /**
    * 导出清单
    */
-  async export(current: number, pageSize: number, userInfo: User) {
+  async export(sectionalEntry: string, userInfo: User) {
+    const tableData = await this.exportListFun(sectionalEntry, userInfo)
     try {
-      const excelHeader = await this.exportExcelRepository.findOne({
-        where: { exportService: ExportFileService.LISTEXPORT },
-      })
-      const queryBuilder = this.listRepository.createQueryBuilder('list').orderBy('list.serialNumber', 'ASC')
-      if (current && pageSize) {
-        queryBuilder.skip((current - 1) * pageSize)
-        queryBuilder.take(pageSize)
-      }
-      queryBuilder.where('list.tenantId = :tenantId', {
-        tenantId: userInfo.tenantId,
-      })
-      const listData = await queryBuilder.getMany()
-      const options: ExportExcelParamsType = {
-        style: {
-          font: {
-            size: 10,
-            bold: true,
-            color: { argb: 'ffffff' },
-          },
-          alignment: { vertical: 'middle', horizontal: 'center' },
-          fill: {
-            type: 'pattern',
-            pattern: 'solid',
-            fgColor: { argb: '808080' },
-          },
-          border: {
-            top: { style: 'thin', color: { argb: '9e9e9e' } },
-            left: { style: 'thin', color: { argb: '9e9e9e' } },
-            bottom: { style: 'thin', color: { argb: '9e9e9e' } },
-            right: { style: 'thin', color: { argb: '9e9e9e' } },
+      return await this.excelService.exportExcel(
+        {
+          serviceName: ExportFileService.LISTEXPORT,
+          tableData,
+          extraStyle: {
+            col: 4,
+            row: 2,
+            alignment: {
+              wrapText: true,
+              vertical: 'middle',
+              horizontal: 'left',
+            },
           },
         },
-        headerColumns: JSON.parse(excelHeader.exportFields),
-        sheetName: excelHeader.sheetName,
-        tableData: listData,
-      }
-      return options
+        userInfo,
+      )
     } catch (e) {
-      console.log(e)
       throw new BadRequestException('导出清单失败')
+    }
+  }
+
+  async exportListFun(sectionalEntry: string, userInfo: User) {
+    const queryBuilder = this.listRepository
+      .createQueryBuilder('list')
+      .orderBy(`list.serialNumber`, 'ASC')
+      .where('list.tenantId = :tenantId', {
+        tenantId: userInfo.tenantId,
+      })
+    if (sectionalEntry) {
+      queryBuilder.andWhere('list.sectionalEntry like :sectionalEntry', {
+        sectionalEntry: `%${sectionalEntry}%`,
+      })
+    }
+    try {
+      return await queryBuilder.getMany()
+    } catch (e) {
+      throw new BadRequestException('查询列表失败')
     }
   }
 
@@ -332,6 +342,7 @@ export class ListService {
       throw new BadRequestException('查询列表失败')
     }
   }
+
   /**
    * 查询排除后的列表（甘特图）
    * @param current
@@ -512,6 +523,7 @@ export class ListService {
       select: ['listId'],
     })
     const listIds = lists.map((item) => item.listId)
+    console.log(listIds)
     const queryBuilder = this.listRepository
       .createQueryBuilder('list')
       .skip((current - 1) * pageSize)
@@ -520,7 +532,9 @@ export class ListService {
       .where('list.tenantId = :tenantId', {
         tenantId: userInfo.tenantId,
       })
-      .andWhere('list.id NOT IN (:...listIds)', { listIds })
+    if (listIds.length > 0) {
+      queryBuilder.andWhere('list.id NOT IN (:...listIds)', { listIds })
+    }
     if (listCode) {
       queryBuilder.andWhere('list.listCode = :listCode', { listCode })
     }
@@ -568,15 +582,18 @@ export class ListService {
    * @param userInfo
    */
   async transitionIdOrName(filed: string, userInfo: User) {
-    const name = await this.listRepository.findOne({
-      where: {
-        id: filed,
-        tenantId: userInfo.tenantId,
-      },
-    })
-    if (name) {
-      return name.listCode
-    }
+    // const name = await this.listRepository.findOne({
+    //   where: {
+    //     id: filed,
+    //     tenantId: userInfo.tenantId,
+    //   },
+    // })
+    // console.log(name)
+    // if (name) {
+    //   console.log(579)
+    //   return name.listCode
+    // }
+    console.log(filed)
     const id = await this.listRepository.findOne({
       where: {
         listCode: filed,
@@ -587,5 +604,112 @@ export class ListService {
       return id.id
     }
     throw new BadRequestException('请输入正确的名称或ID')
+  }
+
+  /**
+   * 批量删除清单
+   * @param ids
+   * @param userInfo
+   */
+  async batchDelete(ids: string[], userInfo: User) {
+    await this.listRepository
+      .createQueryBuilder()
+      .delete()
+      .from(List)
+      .where('id in (:...ids)', { ids })
+      .andWhere('tenantId = :tenantId', { tenantId: userInfo.tenantId })
+      .execute()
+  }
+
+  /**
+   * 获取三量对比表
+   * @param current 当前页
+   * @param pageSize 页面大小
+   * @param sortField 排序字段
+   * @param sortOrder 排序方式
+   * @param listCode 项目编码
+   * @param listName 项目名称
+   * @param listCharacteristic 项目特征
+   * @param sectionalEntry 分部分项
+   * @param userInfo 用户信息
+   * @returns 清单列表
+   */
+  async listCompare(
+    current: number,
+    pageSize: number,
+    sortField: string,
+    sortOrder: Order,
+    listCode: string,
+    listName: string,
+    listCharacteristic: string,
+    sectionalEntry: string,
+    userInfo: User,
+  ) {
+    const queryBuilder = this.listRepository
+      .createQueryBuilder('list')
+      .leftJoin(ProjectLogDetail, 'pld', 'pld.list_id = list.id')
+      .select([
+        'list.id as id',
+        'list.serial_number as serialNumber',
+        'list.list_code as listCode',
+        'list.list_name as listName',
+        'list.list_characteristic as listCharacteristic',
+        'list.unit as unit',
+        'list.quantities as quantities',
+        'list.design_quantities as designQuantities',
+        'CAST(SUM(pld.completion_quantity)AS DECIMAL(18, 2)) as completionQuantities',
+      ])
+      .orderBy(`list.${sortField}`, sortOrder)
+      .where('list.tenant_id = :tenantId', { tenantId: userInfo.tenantId })
+      .groupBy('list.id')
+      .addGroupBy('list.serial_number')
+      .addGroupBy('list.list_code')
+      .addGroupBy('list.list_name')
+      .addGroupBy('list.list_characteristic')
+      .addGroupBy('list.unit')
+      .addGroupBy('list.quantities')
+      .addGroupBy('list.design_quantities')
+      .offset((current - 1) * pageSize)
+      .limit(pageSize)
+    if (listCode) {
+      queryBuilder.andWhere('list.list_code like :listCode', { listCode: `%${listCode}%` })
+    }
+    if (listName) {
+      queryBuilder.andWhere('list.list_name like :listName', { listName: `%${listName}%` })
+    }
+    if (listCharacteristic) {
+      queryBuilder.andWhere('list.list_characteristic like :listCharacteristic', {
+        listCharacteristic: `%${listCharacteristic}%`,
+      })
+    }
+    if (sectionalEntry) {
+      queryBuilder.andWhere('list.sectionalEntry like :sectionalEntry', {
+        sectionalEntry: `%${sectionalEntry}%`,
+      })
+    }
+
+    const data = await queryBuilder.getRawMany()
+
+    return {
+      results: data,
+      current,
+      pageSize,
+      total: await queryBuilder.getCount(),
+    }
+  }
+
+  /**
+   * 更新图纸量
+   * @param id
+   * @param designQuantities
+   */
+  async updateListCompare(id: string, designQuantities: number) {
+    console.log(id, designQuantities)
+    return await this.listRepository.update(
+      { id },
+      {
+        designQuantities,
+      },
+    )
   }
 }

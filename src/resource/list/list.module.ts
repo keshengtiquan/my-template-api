@@ -10,10 +10,11 @@ import { WorkPlaceList } from '../workplace/entities/workplace.list.entity'
 import { GanttList } from '../../plan/gantt/entities/gantt-list.entity'
 import { Issued } from '../../plan/issued/entities/issued.entity'
 import { ProjectLogDetail } from '../../project-log/entities/project-log-detail.entity'
+import { Division } from '../division/entities/division.entity'
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([List, Excel, ExportExcel, WorkPlaceList, GanttList, Issued, ProjectLogDetail]),
+    TypeOrmModule.forFeature([List, Excel, ExportExcel, WorkPlaceList, GanttList, Issued, ProjectLogDetail, Division]),
     ExcelModule,
   ],
   controllers: [ListController],

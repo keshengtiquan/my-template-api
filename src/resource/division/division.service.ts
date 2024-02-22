@@ -3,13 +3,15 @@ import { CreateDivisionDto } from './dto/create-division.dto'
 import { UpdateDivisionDto } from './dto/update-division.dto'
 import { Division } from './entities/division.entity'
 import { InjectRepository } from '@nestjs/typeorm'
-import { Repository } from 'typeorm'
+import { In, Repository } from 'typeorm'
 import { User } from '../../sys/user/entities/user.entity'
 import { handleTree } from '../../utils'
 import { AddListDto } from './dto/add-list.dto'
 import { List } from '../list/entities/list.entity'
 import { MyLoggerService } from '../../common/my-logger/my-logger.service'
 import Decimal from 'decimal.js'
+import { ImportFileService } from '../../enmus'
+import { ExcelService } from '../../excel/excel.service'
 
 @Injectable()
 export class DivisionService {
@@ -19,6 +21,8 @@ export class DivisionService {
   private listRepository: Repository<List>
   @Inject()
   private loggerService: MyLoggerService
+  @Inject()
+  private excelService: ExcelService
 
   /**
    * 创建分部分项
@@ -60,6 +64,7 @@ export class DivisionService {
         return await manager.save(divisionRes)
       })
     } catch (e) {
+      console.log(e)
       if (e instanceof Error) {
         throw new BadRequestException(e.message)
       } else {
@@ -86,7 +91,7 @@ export class DivisionService {
         'd.update_by as updateBy',
         'd.division_type as divisionType',
         'd.parent_names as parentNames',
-        'COALESCE(CAST(SUM(list.unit_price * list.quantities)as DECIMAL(10,2)),0) as outputValue',
+        'COALESCE(CAST(SUM(list.unit_price * list.quantities)as DECIMAL(18,2)),0) as outputValue',
       ])
       .where('d.tenant_id = :tenantId', { tenantId: userInfo.tenantId })
       .groupBy('d.division_name')
@@ -95,10 +100,14 @@ export class DivisionService {
       .addGroupBy('d.parent_id')
     try {
       const res = await queryBuilder.getRawMany()
+      console.log(res.length)
       const tree = handleTree(res)
       const newTree = this.addTreeLeaf(tree)
       const rootNode = newTree[0]
-      this.calculateOutputValue(rootNode)
+      if (rootNode) {
+        this.calculateOutputValue(rootNode)
+      }
+
       return newTree
     } catch (e) {
       console.log(e)
@@ -285,38 +294,6 @@ export class DivisionService {
    * @param divisionId
    * @param userInfo
    */
-  // async updateOutPutValue(divisionId: string, userInfo: User) {
-  //   try {
-  //     const lists = await this.listRepository.find({
-  //       where: { currentSection: divisionId, tenantId: userInfo.tenantId },
-  //     })
-  //     const divisionOutPutValue = lists.reduce((total, item) => {
-  //       return Number(Decimal.add(total, item.combinedPrice))
-  //     }, 0)
-  //     await this.divisionRepository.update(
-  //       { id: divisionId },
-  //       {
-  //         outputValue: divisionOutPutValue,
-  //       },
-  //     )
-  //     const parentId = await this.divisionRepository.findOne({
-  //       where: {
-  //         id: divisionId,
-  //         tenantId: userInfo.tenantId,
-  //       },
-  //       select: ['parentId'],
-  //     })
-  //     const divisions = await this.divisionRepository.find({
-  //       where: {
-  //         parentId: parentId.parentId,
-  //       },
-  //     })
-  //   } catch (e) {
-  //     this.loggerService.error(`更新产值失败【${e.message}`, List.name)
-  //     throw new BadRequestException('更新产值失败')
-  //   }
-  // }
-
   calculateOutputValue(node: any) {
     if (node.children && node.children.length > 0) {
       // 如果当前节点有子节点，对每个子节点进行递归计算
@@ -324,14 +301,125 @@ export class DivisionService {
       for (const child of node.children) {
         sum = Number(Decimal.add(sum, this.calculateOutputValue(child)))
       }
-      // await this.divisionRepository.update(
-      //   { id: node.id },
-      //   {
-      //     outputValue: sum,
-      //   },
-      // )
       node.outputValue = sum // 更新当前节点的outputValue为子节点之和
     }
     return parseFloat(node.outputValue) // 返回当前节点的outputValue
+  }
+
+  /**
+   * 根据类型获取分部分项
+   * @param divisionType
+   * @param userInfo
+   */
+  async getSectional(divisionType: string, userInfo: User) {
+    return await this.divisionRepository.find({
+      where: {
+        divisionType,
+        tenantId: userInfo.tenantId,
+      },
+    })
+  }
+
+  /**
+   * 上传分部分项划分
+   * @param file
+   * @param userInfo
+   */
+  async upload(file: Express.Multer.File, userInfo: User) {
+    function conditionCheckFunc(data) {
+      return !data.A || !data.C
+    }
+    return await this.excelService.excelImport({
+      file,
+      userInfo,
+      serviceName: ImportFileService.DIVISIONIMPORT,
+      callback: this.uploadFun.bind(this),
+      conditionCheckFunc: conditionCheckFunc,
+    })
+  }
+
+  async uploadFun(data: any, userInfo: User) {
+    const insertArr: Division[] = []
+    const { unitProject, subunitProject, segmentProject, subsegmentProject, subitemProject } = data
+    const alreadyExist = await this.divisionRepository.find({
+      where: {
+        divisionName: In([unitProject, subunitProject, segmentProject, subsegmentProject, subitemProject]),
+        tenantId: userInfo.tenantId,
+      },
+      select: ['divisionName'],
+    })
+    const alreadyName = alreadyExist.map((item) => item.divisionName)
+    //单位工程
+    if (unitProject && !alreadyName.includes(unitProject)) {
+      // console.log('单位工程', unitProject)
+      const res = await this.create({ divisionName: unitProject, divisionType: '单位工程', parentId: '0' }, userInfo)
+      if (res) insertArr.push(res)
+    }
+    //子单位工程
+    if (subunitProject && !alreadyName.includes(subunitProject)) {
+      // console.log('子单位工程', subunitProject)
+      // const superiorsData = insertArr.find((item) => item.divisionName === unitProject)
+      const superiorsData = await this.divisionRepository.findOne({
+        where: {
+          divisionName: unitProject,
+          tenantId: userInfo.tenantId,
+        },
+      })
+      const res = await this.create(
+        { divisionName: subunitProject, divisionType: '子单位工程', parentId: superiorsData.id },
+        userInfo,
+      )
+      if (res) insertArr.push(res)
+    }
+    //分部工程
+    if (segmentProject && !alreadyName.includes(segmentProject)) {
+      const superiorsData = await this.divisionRepository.findOne({
+        where: {
+          divisionName: subunitProject ? subunitProject : unitProject,
+          tenantId: userInfo.tenantId,
+        },
+      })
+      const res = await this.create(
+        { divisionName: segmentProject, divisionType: '分部工程', parentId: superiorsData.id },
+        userInfo,
+      )
+      if (res) insertArr.push(res)
+    }
+    //子分部工程
+    if (subsegmentProject && !alreadyName.includes(subsegmentProject)) {
+      const superiorsData = await this.divisionRepository.findOne({
+        where: {
+          divisionName: segmentProject,
+          tenantId: userInfo.tenantId,
+        },
+      })
+      const res = await this.create(
+        { divisionName: subsegmentProject, divisionType: '子分部工程', parentId: superiorsData.id },
+        userInfo,
+      )
+      if (res) insertArr.push(res)
+    }
+    //分项工程
+    if (subitemProject && !alreadyName.includes(subitemProject)) {
+      const superiorsData = await this.divisionRepository.findOne({
+        where: {
+          divisionName: subsegmentProject ? subsegmentProject : segmentProject,
+          tenantId: userInfo.tenantId,
+        },
+      })
+      const res = await this.create(
+        { divisionName: subitemProject, divisionType: '分项工程', parentId: superiorsData.id },
+        userInfo,
+      )
+      if (res) insertArr.push(res)
+    }
+  }
+
+  /**
+   * 导出分部分项
+   * @param userInfo
+   */
+  async exportDivision(userInfo: User) {
+    return Promise.resolve(undefined)
   }
 }
