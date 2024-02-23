@@ -8,13 +8,11 @@ services:
       - mysql-container
       - redis-container
     ports:
-      - "3000:3000"
+      - 3000:3000
     networks:
       - common-network
   mysql-container:
     image: mysql
-    ports:
-      - "3306:3306"
     volumes:
       - /Users/dadaz/mysql-data:/var/lib/mysql
     environment:
@@ -24,8 +22,6 @@ services:
       - common-network
   redis-container:
     image: redis
-    ports:
-      - "6379:6379"
     volumes:
       - /Users/dadaz/redis-data:/data
     networks:
