@@ -1,13 +1,13 @@
-import { Controller, Post, Body, DefaultValuePipe, Get, Query, UseInterceptors } from '@nestjs/common'
-import { RoleService } from './role.service'
-import { CreateRoleDto } from './dto/create-role.dto'
-import { Auth } from '../auth/decorators/auth.decorators'
-import { Result } from '../../common/result'
-import { UserInfo } from '../../decorators/user.dectorator'
-import { User } from '../user/entities/user.entity'
-import { generateParseIntPipe } from '../../utils'
-import { UtcToLocalInterceptor } from '../../interceptor/utc2Local.interceptor'
-import { UpdateRoleDto } from './dto/update-role.dto'
+import { Controller, Post, Body, DefaultValuePipe, Get, Query, UseInterceptors } from '@nestjs/common';
+import { RoleService } from './role.service';
+import { CreateRoleDto } from './dto/create-role.dto';
+import { Auth } from '../auth/decorators/auth.decorators';
+import { Result } from '../../common/result';
+import { UserInfo } from '../../decorators/user.dectorator';
+import { User } from '../user/entities/user.entity';
+import { generateParseIntPipe } from '../../utils';
+import { UtcToLocalInterceptor } from '../../interceptor/utc2Local.interceptor';
+import { UpdateRoleDto } from './dto/update-role.dto';
 
 @Controller('role')
 export class RoleController {
@@ -16,7 +16,7 @@ export class RoleController {
   @Post('/create')
   @Auth()
   async create(@Body() createRoleDto: CreateRoleDto, @UserInfo() userInfo: User) {
-    return Result.success(await this.roleService.create(createRoleDto, userInfo), '角色创建成功')
+    return Result.success(await this.roleService.create(createRoleDto, userInfo), '角色创建成功');
   }
 
   /**
@@ -34,8 +34,8 @@ export class RoleController {
     @Query('sortOrder') sortOrder: string,
     @UserInfo() user: User,
   ) {
-    const data = await this.roleService.getList(current, pageSize, sortField, sortOrder, user)
-    return Result.success(data)
+    const data = await this.roleService.getList(current, pageSize, sortField, sortOrder, user);
+    return Result.success(data);
   }
 
   /**
@@ -46,8 +46,8 @@ export class RoleController {
   @Post('/forbidden')
   @Auth()
   async forbiddenRole(@Body('id') id: string, @Body('status') status: string) {
-    const data = await this.roleService.forbidden(id, status)
-    return Result.success(data, status === '1' ? '禁用成功' : '启用成功')
+    const data = await this.roleService.forbidden(id, status);
+    return Result.success(data, status === '1' ? '禁用成功' : '启用成功');
   }
 
   /**
@@ -57,8 +57,8 @@ export class RoleController {
   @Get('/get')
   @Auth()
   async get(@Query('id') id: string) {
-    const data = await this.roleService.getOneById(id)
-    return Result.success(data)
+    const data = await this.roleService.getOneById(id);
+    return Result.success(data);
   }
 
   /**
@@ -68,8 +68,8 @@ export class RoleController {
   @Post('/update')
   @Auth()
   async update(@Body() updateRoleDto: UpdateRoleDto, @UserInfo() userInfo: User) {
-    const data = await this.roleService.update(updateRoleDto, userInfo)
-    return Result.success(data, '更新角色成功')
+    const data = await this.roleService.update(updateRoleDto, userInfo);
+    return Result.success(data, '更新角色成功');
   }
 
   /**
@@ -79,7 +79,7 @@ export class RoleController {
   @Post('/delete')
   @Auth()
   async delete(@Body('id') id: string) {
-    const data = await this.roleService.delete(id)
-    return Result.success(data, '删除角色成功')
+    const data = await this.roleService.delete(id);
+    return Result.success(data, '删除角色成功');
   }
 }

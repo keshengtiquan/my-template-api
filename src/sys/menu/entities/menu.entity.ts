@@ -12,7 +12,7 @@ export class Menu {
   @Column({ nullable: true, length: 100 })
   icon: string
 
-  @Column({ length: 125 })
+  @Column({ length: 125, nullable: true })
   path: string
 
   @Column({ nullable: true, length: 125 })

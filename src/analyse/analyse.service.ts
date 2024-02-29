@@ -1,34 +1,34 @@
-import { BadRequestException, Inject, Injectable } from '@nestjs/common'
-import { User } from '../sys/user/entities/user.entity'
-import { endOfMonth, endOfWeek, endOfYear, format, startOfMonth, startOfWeek, startOfYear, subMonths } from 'date-fns'
-import { InjectRepository } from '@nestjs/typeorm'
-import { List } from '../resource/list/entities/list.entity'
-import { Repository } from 'typeorm'
-import { ProjectLog } from '../project-log/entities/project-log.entity'
-import { ProjectLogDetail } from '../project-log/entities/project-log-detail.entity'
-import * as dayjs from 'dayjs'
-import Decimal from 'decimal.js'
-import { WorkPlace } from '../resource/workplace/entities/workplace.entity'
-import { Dept } from '../sys/dept/entities/dept.entity'
-import { DeptService } from '../sys/dept/dept.service'
-import { Order } from '../types'
-import { Division } from '../resource/division/entities/division.entity'
-import { handleTree } from '../utils'
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { User } from '../sys/user/entities/user.entity';
+import { endOfMonth, endOfWeek, endOfYear, format, startOfMonth, startOfWeek, startOfYear, subMonths } from 'date-fns';
+import { InjectRepository } from '@nestjs/typeorm';
+import { List } from '../resource/list/entities/list.entity';
+import { Repository } from 'typeorm';
+import { ProjectLog } from '../project-log/entities/project-log.entity';
+import { ProjectLogDetail } from '../project-log/entities/project-log-detail.entity';
+import * as dayjs from 'dayjs';
+import Decimal from 'decimal.js';
+import { WorkPlace } from '../resource/workplace/entities/workplace.entity';
+import { Dept } from '../sys/dept/entities/dept.entity';
+import { DeptService } from '../sys/dept/dept.service';
+import { Order } from '../types';
+import { Division } from '../resource/division/entities/division.entity';
+import { handleTree } from '../utils';
 
 @Injectable()
 export class AnalyseService {
   @Inject()
-  private readonly deptService: DeptService
+  private readonly deptService: DeptService;
   @InjectRepository(List)
-  private readonly listRepository: Repository<List>
+  private readonly listRepository: Repository<List>;
   @InjectRepository(ProjectLog)
-  private readonly projectLogRepository: Repository<ProjectLog>
+  private readonly projectLogRepository: Repository<ProjectLog>;
   @InjectRepository(ProjectLogDetail)
-  private readonly projectLogDetailRepository: Repository<ProjectLogDetail>
+  private readonly projectLogDetailRepository: Repository<ProjectLogDetail>;
   @InjectRepository(WorkPlace)
-  private readonly workPlaceRepository: Repository<WorkPlace>
+  private readonly workPlaceRepository: Repository<WorkPlace>;
   @InjectRepository(Division)
-  private readonly divisionRepository: Repository<Division>
+  private readonly divisionRepository: Repository<Division>;
 
   private readonly sql = `
       SELECT completionOutputValue,
@@ -48,15 +48,15 @@ export class AnalyseService {
                                                ELSE 0 END) AS DECIMAL(10, 2)) as 'planOutputValue'
                            FROM sc_issued i
                                     LEFT JOIN sc_list list ON list.id = i.list_id
-                           WHERE i.tenant_id = ?) AS t2;`
+                           WHERE i.tenant_id = ?) AS t2;`;
 
   /**
    * 获取指标卡数据
    * @param userInfo
    */
   async getIntroduce(userInfo: User) {
-    const current = new Date()
-    const params = this.getStartDateAndEndDate(current)
+    const current = new Date();
+    const params = this.getStartDateAndEndDate(current);
     try {
       // const dailyIntroduceData = await this.getDailyIntroduce(userInfo, params)
       // const monthIntroduceData = await this.getMonthIntroduce(userInfo, params)
@@ -67,11 +67,9 @@ export class AnalyseService {
         this.getMonthIntroduce(userInfo, params),
         this.getYearIntroduce(userInfo, params),
         this.getProgressIntroduce(userInfo),
-      ])
-      return { dailyIntroduceData, monthIntroduceData, yearIntroduceData, totalityIntroduceData }
-    } catch (e) {
-      console.log(e)
-    }
+      ]);
+      return { dailyIntroduceData, monthIntroduceData, yearIntroduceData, totalityIntroduceData };
+    } catch (e) {}
   }
 
   /**
@@ -100,10 +98,9 @@ export class AnalyseService {
                 AS DECIMAL(10, 2)) as dayRate`,
         ])
         .where('pl.tenant_id = :tenantId', { tenantId: userInfo.tenantId })
-        .getRawOne()
+        .getRawOne();
     } catch (e) {
-      console.log(e)
-      throw new BadRequestException('获取日指标卡失败')
+      throw new BadRequestException('获取日指标卡失败');
     }
   }
 
@@ -121,7 +118,7 @@ export class AnalyseService {
       .where('pl.tenant_id = :tenantId', { tenantId: userInfo.tenantId })
       .andWhere('pl.fill_date >= :monthStartDate', { monthStartDate: params.monthStartDate })
       .andWhere('pl.fill_date <= :monthEndDate', { monthEndDate: params.monthEndDate })
-      .groupBy('pl.fill_date')
+      .groupBy('pl.fill_date');
     const data = await this.projectLogRepository.query(this.sql, [
       params.monthStartDate,
       params.monthEndDate,
@@ -130,22 +127,22 @@ export class AnalyseService {
       params.monthEndDate,
       'month',
       userInfo.tenantId,
-    ])
-    const chart = await queryBuilder.getRawMany()
-    const diff = dayjs(params.monthEndDate).diff(dayjs(params.monthStartDate), 'day')
-    const chartData = []
+    ]);
+    const chart = await queryBuilder.getRawMany();
+    const diff = dayjs(params.monthEndDate).diff(dayjs(params.monthStartDate), 'day');
+    const chartData = [];
     for (let i = 0; i <= diff; i++) {
-      const date = dayjs(params.monthStartDate).add(i, 'day').format('YYYY-MM-DD')
+      const date = dayjs(params.monthStartDate).add(i, 'day').format('YYYY-MM-DD');
       if (chart.findIndex((item) => item.fill_date === date) !== -1) {
-        chartData.push({ x: date, y: Number(chart.find((item) => item.fill_date === date).totalValue) })
+        chartData.push({ x: date, y: Number(chart.find((item) => item.fill_date === date).totalValue) });
       } else {
-        chartData.push({ x: date, y: 0 })
+        chartData.push({ x: date, y: 0 });
       }
     }
     return {
       data: data[0],
       chartData,
-    }
+    };
   }
 
   /**
@@ -162,7 +159,7 @@ export class AnalyseService {
       params.yearEndDate,
       'year',
       userInfo.tenantId,
-    ])
+    ]);
     const queryBuilder = this.projectLogRepository
       .createQueryBuilder('pl')
       .leftJoin(ProjectLogDetail, 'pld', 'pld.log_id = pl.id')
@@ -176,24 +173,24 @@ export class AnalyseService {
       .andWhere('pl.fill_date >= :yearStartDate', { yearStartDate: params.yearStartDate })
       .andWhere('pl.fill_date <= :yearEndDate', { yearEndDate: params.yearEndDate })
       .groupBy('monthYear')
-      .addGroupBy('monthNumber')
-    const chart = await queryBuilder.getRawMany()
-    const chartData = []
+      .addGroupBy('monthNumber');
+    const chart = await queryBuilder.getRawMany();
+    const chartData = [];
     for (let i = 1; i <= 12; i++) {
-      const chartItem = chart.find((item) => item.monthNumber === i)
+      const chartItem = chart.find((item) => item.monthNumber === i);
       if (chartItem) {
         chartData.push({
           x: chartItem.monthYear,
           y: Number(chartItem.monthlyTotalValue),
-        })
+        });
       } else {
         chartData.push({
           x: `${params.yearStartDate.substring(0, 4)}年${i}月`,
           y: 0,
-        })
+        });
       }
     }
-    return { data: data[0], chartData }
+    return { data: data[0], chartData };
   }
 
   /**
@@ -212,9 +209,9 @@ export class AnalyseService {
         'CAST(SUM(CASE WHEN pl.fill_date < :lastMonthEndDate THEN list.unit_price * pld.completion_quantity ELSE NULL END) AS DECIMAL(18, 2)) AS lastMonthComplete',
       ])
       .where('pld.tenant_id= :tenantId', { tenantId: userInfo.tenantId })
-      .setParameter('lastMonthEndDate', format(endOfMonth(subMonths(new Date(), 1)), 'yyyy-MM-dd'))
+      .setParameter('lastMonthEndDate', format(endOfMonth(subMonths(new Date(), 1)), 'yyyy-MM-dd'));
     try {
-      const [data] = await queryBuilder.getRawMany()
+      const [data] = await queryBuilder.getRawMany();
       return {
         progress: Number(Decimal.div(data.complete, data.total)),
         progressText: (Number(Decimal.div(data.complete, data.total)) * 100).toFixed(2),
@@ -226,24 +223,24 @@ export class AnalyseService {
             ),
           ) * 100
         ).toFixed(2),
-      }
+      };
     } catch (e) {
-      throw new BadRequestException('数据异常')
+      throw new BadRequestException('数据异常');
     }
   }
 
   getStartDateAndEndDate(date: Date) {
-    const log = format(date, 'yyyy')
-    const yearStartDate = format(startOfYear(new Date(parseInt(log), 0)), 'yyyy-MM-dd')
-    const yearEndDate = format(endOfYear(new Date(parseInt(log), 0)), 'yyyy-MM-dd')
-    const monthStartDate = format(startOfMonth(date), 'yyyy-MM-dd')
-    const monthEndDate = format(endOfMonth(date), 'yyyy-MM-dd')
-    const weekStartDate = format(startOfWeek(date, { weekStartsOn: 1 }), 'yyyy-MM-dd')
-    const weekEndDate = format(endOfWeek(date, { weekStartsOn: 1 }), 'yyyy-MM-dd')
-    const today = dayjs(date).format('YYYY-MM-DD')
-    const yesterday = dayjs(date).subtract(1, 'day').format('YYYY-MM-DD')
-    const lastWeekStartDate = dayjs(weekStartDate).subtract(1, 'week').format('YYYY-MM-DD')
-    const lastWeekEndDate = dayjs(weekEndDate).subtract(1, 'week').format('YYYY-MM-DD')
+    const log = format(date, 'yyyy');
+    const yearStartDate = format(startOfYear(new Date(parseInt(log), 0)), 'yyyy-MM-dd');
+    const yearEndDate = format(endOfYear(new Date(parseInt(log), 0)), 'yyyy-MM-dd');
+    const monthStartDate = format(startOfMonth(date), 'yyyy-MM-dd');
+    const monthEndDate = format(endOfMonth(date), 'yyyy-MM-dd');
+    const weekStartDate = format(startOfWeek(date, { weekStartsOn: 1 }), 'yyyy-MM-dd');
+    const weekEndDate = format(endOfWeek(date, { weekStartsOn: 1 }), 'yyyy-MM-dd');
+    const today = dayjs(date).format('YYYY-MM-DD');
+    const yesterday = dayjs(date).subtract(1, 'day').format('YYYY-MM-DD');
+    const lastWeekStartDate = dayjs(weekStartDate).subtract(1, 'week').format('YYYY-MM-DD');
+    const lastWeekEndDate = dayjs(weekEndDate).subtract(1, 'week').format('YYYY-MM-DD');
     return {
       yearStartDate,
       yearEndDate,
@@ -255,7 +252,7 @@ export class AnalyseService {
       lastWeekEndDate,
       today,
       yesterday,
-    }
+    };
   }
 
   /**
@@ -276,25 +273,25 @@ export class AnalyseService {
       .where('wp.tenant_id= :tenantId', { tenantId: userInfo.tenantId })
       .andWhere('wp.workplace_type = :workPlaceType', { workPlaceType })
       .groupBy('wp.workplace_name')
-      .addGroupBy('wp.output_value')
+      .addGroupBy('wp.output_value');
     try {
-      const list = await queryBuilder.getRawMany()
-      const results = []
+      const list = await queryBuilder.getRawMany();
+      const results = [];
       list.forEach((item) => {
         results.push({
           workplaceName: item.workplaceName,
           value: Number(Decimal.sub(item.outPutValue, item.completePutValue)),
           type: '剩余量',
-        })
+        });
         results.push({
           workplaceName: item.workplaceName,
           value: Number(item.completePutValue),
           type: '完成量',
-        })
-      })
-      return results
+        });
+      });
+      return results;
     } catch (e) {
-      throw new BadRequestException('获取各个工点的完成清空失败')
+      throw new BadRequestException('获取各个工点的完成清空失败');
     }
   }
 
@@ -314,33 +311,32 @@ export class AnalyseService {
       ])
       .where('pld.tenant_id = :tenantId', { tenantId: userInfo.tenantId })
       .groupBy('pld.work_area_id')
-      .addGroupBy('dept.id')
+      .addGroupBy('dept.id');
     if (time && time.length > 0) {
-      queryBuilder.andWhere('pl.fill_date >= :startTime', { startTime: time[0] })
-      queryBuilder.andWhere('pl.fill_date <= :endTime', { endTime: time[1] })
+      queryBuilder.andWhere('pl.fill_date >= :startTime', { startTime: time[0] });
+      queryBuilder.andWhere('pl.fill_date <= :endTime', { endTime: time[1] });
     }
     try {
-      const data = await queryBuilder.getRawMany()
-      const dept = await this.deptService.getWorkArea(userInfo)
-      const results = []
+      const data = await queryBuilder.getRawMany();
+      const dept = await this.deptService.getWorkArea(userInfo);
+      const results = [];
       dept.forEach((workArea) => {
-        const row = data.find((item) => item.deptId === workArea.id)
+        const row = data.find((item) => item.deptId === workArea.id);
         if (row) {
           results.push({
             workAreaName: workArea.deptName,
             outputValue: row.outputValue,
-          })
+          });
         } else {
           results.push({
             workAreaName: workArea.deptName,
             outputValue: 0,
-          })
+          });
         }
-      })
-      return results.sort((a, b) => b.outputValue - a.outputValue)
+      });
+      return results.sort((a, b) => b.outputValue - a.outputValue);
     } catch (e) {
-      console.log(e)
-      throw new BadRequestException('获取工区的完成产值失败')
+      throw new BadRequestException('获取工区的完成产值失败');
     }
   }
 
@@ -349,7 +345,6 @@ export class AnalyseService {
    * @param userInfo
    */
   async getFocusList(current: number, pageSize: number, sortField: string, sortOrder: Order, userInfo: User) {
-    console.log('current', current, pageSize)
     const queryBuilder = this.listRepository
       .createQueryBuilder('list')
       .leftJoin(ProjectLogDetail, 'pld', 'pld.list_id = list.id')
@@ -364,24 +359,22 @@ export class AnalyseService {
       .andWhere('list.is_focus_list = :isFocusList', { isFocusList: true })
       .groupBy('list.serial_number')
       .addGroupBy('list.list_name')
-      .addGroupBy('list.quantities')
+      .addGroupBy('list.quantities');
 
     try {
       const list = await queryBuilder
         .skip((current - 1) * pageSize)
         .take(pageSize)
-        .getRawMany()
-      const total = await queryBuilder.getCount()
-      console.log(total)
+        .getRawMany();
+      const total = await queryBuilder.getCount();
       return {
         results: list,
         current: current,
         pageSize: pageSize,
         total: total,
-      }
+      };
     } catch (e) {
-      console.log(e)
-      throw new BadRequestException('获取关注列表失败')
+      throw new BadRequestException('获取关注列表失败');
     }
   }
 
@@ -414,7 +407,7 @@ export class AnalyseService {
                   ) AS subquery
               GROUP BY
                   id, division_name, parent_id, output, list_id) AS t1
-        GROUP BY t1.id, t1.division_name, t1.parent_id;`
+        GROUP BY t1.id, t1.division_name, t1.parent_id;`;
     // const sql2 = `SELECT list.list_name as name,
     //                      list.current_section,
     //                      CAST(list.unit_price * list.quantities as DECIMAL(10, 2)) as value, CAST(sum(list.unit_price * pld.completion_quantity)as DECIMAL(10,2)) as finish
@@ -424,23 +417,23 @@ export class AnalyseService {
     //               WHERE list.tenant_id = ?
     //               GROUP BY list.list_name, list.current_section, value`
     try {
-      const res = await this.divisionRepository.query(sql, [userInfo.tenantId])
-      const tree = handleTree(res)
-      this.calculateOutputValue(tree[0], 'finish')
-      return tree
+      const res = await this.divisionRepository.query(sql, [userInfo.tenantId]);
+      const tree = handleTree(res);
+      this.calculateOutputValue(tree[0], 'finish');
+      return tree;
     } catch (e) {
-      throw new BadRequestException('获取分项占比失败')
+      throw new BadRequestException('获取分项占比失败');
     }
   }
   calculateOutputValue(node: any, filed: string) {
     if (node.children && node.children.length > 0) {
       // 如果当前节点有子节点，对每个子节点进行递归计算
-      let sum = 0
+      let sum = 0;
       for (const child of node.children) {
-        sum = Number(Decimal.add(sum, this.calculateOutputValue(child, filed)))
+        sum = Number(Decimal.add(sum, this.calculateOutputValue(child, filed)));
       }
-      node[filed] = sum // 更新当前节点的outputValue为子节点之和
+      node[filed] = sum; // 更新当前节点的outputValue为子节点之和
     }
-    return node[filed] // 返回当前节点的outputValue
+    return node[filed]; // 返回当前节点的outputValue
   }
 }

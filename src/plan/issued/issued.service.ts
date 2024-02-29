@@ -1,13 +1,13 @@
-import { BadRequestException, Inject, Injectable } from '@nestjs/common'
-import { CreateIssuedDto } from './dto/create-issued.dto'
-import { MyLoggerService } from '../../common/my-logger/my-logger.service'
-import { InjectRepository } from '@nestjs/typeorm'
-import { Issued } from './entities/issued.entity'
-import { Repository } from 'typeorm'
-import { List } from '../../resource/list/entities/list.entity'
-import { GanttList } from '../gantt/entities/gantt-list.entity'
-import { Gantt } from '../gantt/entities/gantt.entity'
-import { User } from '../../sys/user/entities/user.entity'
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { CreateIssuedDto } from './dto/create-issued.dto';
+import { MyLoggerService } from '../../common/my-logger/my-logger.service';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Issued } from './entities/issued.entity';
+import { Repository } from 'typeorm';
+import { List } from '../../resource/list/entities/list.entity';
+import { GanttList } from '../gantt/entities/gantt-list.entity';
+import { Gantt } from '../gantt/entities/gantt.entity';
+import { User } from '../../sys/user/entities/user.entity';
 import {
   format,
   getQuarter,
@@ -21,26 +21,30 @@ import {
   endOfMonth,
   startOfWeek,
   endOfWeek,
-} from 'date-fns'
-import { Dept } from '../../sys/dept/entities/dept.entity'
-import { DeptTypeEnum } from '../../enmus'
-import { Order } from '../../types'
-import { DeptService } from '../../sys/dept/dept.service'
-import { ProjectLogDetail } from '../../project-log/entities/project-log-detail.entity'
+} from 'date-fns';
+import { Dept } from '../../sys/dept/entities/dept.entity';
+import { DeptTypeEnum } from '../../enmus';
+import { Order } from '../../types';
+import { DeptService } from '../../sys/dept/dept.service';
+import { ProjectLogDetail } from '../../project-log/entities/project-log-detail.entity';
+import { SectionDivision } from 'src/resource/section-division/entities/section-division.entity';
+import { WorkPlaceList } from 'src/resource/workplace/entities/workplace.list.entity';
 
 @Injectable()
 export class IssuedService {
   @Inject()
-  private loggerService: MyLoggerService
+  private loggerService: MyLoggerService;
   @Inject()
-  private deptService: DeptService
+  private deptService: DeptService;
 
   @InjectRepository(Issued)
-  private issuedRepository: Repository<Issued>
+  private issuedRepository: Repository<Issued>;
   @InjectRepository(List)
-  private listRepository: Repository<List>
+  private listRepository: Repository<List>;
   @InjectRepository(Dept)
-  private deptRepository: Repository<Dept>
+  private deptRepository: Repository<Dept>;
+  @InjectRepository(SectionDivision)
+  private sectionDivisionRepository: Repository<SectionDivision>;
 
   /**
    * 生成计划
@@ -48,7 +52,7 @@ export class IssuedService {
    * @param createIssuedDto
    */
   async generatePlan(createIssuedDto: CreateIssuedDto, userInfo: User) {
-    const planTime = this.getNameFromDateAndType(createIssuedDto.currentDate, createIssuedDto.planType)
+    const planTime = this.getNameFromDateAndType(createIssuedDto.currentDate, createIssuedDto.planType);
     const listQueryBuilder = this.listRepository
       .createQueryBuilder('list')
       .leftJoin(GanttList, 'gl', 'gl.listId = list.id')
@@ -70,21 +74,20 @@ export class IssuedService {
       .orWhere(':startDate BETWEEN g.start_date AND g.end_date', { startDate: planTime.startDate })
       .andWhere('list.tenantId =:tenantId', { tenantId: userInfo.tenantId })
       .groupBy('list.id')
-      .addGroupBy('list.quantities')
+      .addGroupBy('list.quantities');
     const workAreaQueryBuilder = this.deptRepository
       .createQueryBuilder('dept')
       .select('dept.id', 'workAreaId')
       .where('dept.tenantId=:tenantId', { tenantId: userInfo.tenantId })
-      .andWhere('dept.deptType =:deptType', { deptType: DeptTypeEnum.TEAM })
+      .andWhere('dept.deptType =:deptType', { deptType: DeptTypeEnum.TEAM });
 
     try {
-      const listIds = await listQueryBuilder.getRawMany()
-      const workAreaIds = await workAreaQueryBuilder.getRawMany()
-      const data: any[] = []
-      console.log(listIds)
+      const listIds = await listQueryBuilder.getRawMany();
+      const workAreaIds = await workAreaQueryBuilder.getRawMany();
+      const data: any[] = [];
       listIds
         .filter((item) => {
-          return item.quantities > item.completionQuantity
+          return item.quantities > item.completionQuantity;
         })
         .forEach((listId) => {
           workAreaIds.forEach((workAreaId) => {
@@ -103,9 +106,9 @@ export class IssuedService {
               updateBy: userInfo.userName,
               createDept: userInfo.deptId,
               tenantId: userInfo.tenantId,
-            })
-          })
-        })
+            });
+          });
+        });
       return await this.issuedRepository.manager.transaction(async (manager) => {
         await this.issuedRepository.delete({
           tenantId: userInfo.tenantId,
@@ -114,13 +117,13 @@ export class IssuedService {
           ...(planTime.quarter && { quarter: planTime.quarter }),
           ...(planTime.month && { month: planTime.month }),
           ...(planTime.week && { week: planTime.week }),
-        })
-        return await manager.save(Issued, data)
-      })
+        });
+        return await manager.save(Issued, data);
+      });
       // const result = await this.issuedRepository.save(data)
     } catch (e) {
-      this.loggerService.error(`生成计划失败【${e.message}】`, Issued.name)
-      throw new BadRequestException('生成计划失败')
+      this.loggerService.error(`生成计划失败【${e.message}】`, Issued.name);
+      throw new BadRequestException('生成计划失败');
     }
   }
 
@@ -131,17 +134,17 @@ export class IssuedService {
    */
   getNameFromDateAndType(date: Date, type: string) {
     if (type === 'year') {
-      const yearName = format(date, 'yyyy年计划')
-      const log = format(date, 'yyyy')
-      const yearStartDate = format(startOfYear(new Date(parseInt(log), 0)), 'yyyy-MM-dd')
-      const yearEndOfYear = format(endOfYear(new Date(parseInt(log), 0)), 'yyyy-MM-dd')
-      return { name: yearName, type: 'year', year: Number(log), startDate: yearStartDate, endDate: yearEndOfYear }
+      const yearName = format(date, 'yyyy年计划');
+      const log = format(date, 'yyyy');
+      const yearStartDate = format(startOfYear(new Date(parseInt(log), 0)), 'yyyy-MM-dd');
+      const yearEndOfYear = format(endOfYear(new Date(parseInt(log), 0)), 'yyyy-MM-dd');
+      return { name: yearName, type: 'year', year: Number(log), startDate: yearStartDate, endDate: yearEndOfYear };
     } else if (type === 'quarter') {
-      const quarter = getQuarter(date)
-      const quarterName = `第${quarter}季度`
-      const quarterStartDate = format(startOfQuarter(date), 'yyyy-MM-dd')
-      const quarterEndDate = format(endOfQuarter(date), 'yyyy-MM-dd')
-      const year = Number(format(date, 'yyyy'))
+      const quarter = getQuarter(date);
+      const quarterName = `第${quarter}季度`;
+      const quarterStartDate = format(startOfQuarter(date), 'yyyy-MM-dd');
+      const quarterEndDate = format(endOfQuarter(date), 'yyyy-MM-dd');
+      const year = Number(format(date, 'yyyy'));
       return {
         name: `${format(date, 'yyyy年')}${quarterName}计划`,
         type: 'quarter',
@@ -149,14 +152,14 @@ export class IssuedService {
         quarter: quarter,
         startDate: quarterStartDate,
         endDate: quarterEndDate,
-      }
+      };
     } else if (type === 'month') {
-      const year = Number(format(date, 'yyyy'))
-      const quarter = getQuarter(date)
-      const month = getMonth(date)
-      const monthName = `${month + 1}月`
-      const monthStartDate = format(startOfMonth(date), 'yyyy-MM-dd')
-      const monthEndDate = format(endOfMonth(date), 'yyyy-MM-dd')
+      const year = Number(format(date, 'yyyy'));
+      const quarter = getQuarter(date);
+      const month = getMonth(date);
+      const monthName = `${month + 1}月`;
+      const monthStartDate = format(startOfMonth(date), 'yyyy-MM-dd');
+      const monthEndDate = format(endOfMonth(date), 'yyyy-MM-dd');
       return {
         name: `${format(date, 'yyyy年')}${monthName}计划`,
         year,
@@ -165,14 +168,14 @@ export class IssuedService {
         type: 'month',
         startDate: monthStartDate,
         endDate: monthEndDate,
-      }
+      };
     } else if (type === 'week') {
-      const year = Number(format(date, 'yyyy'))
-      const quarter = getQuarter(date)
-      const month = getMonth(date)
-      const week = getWeek(date)
-      const weekStartDate = format(startOfWeek(date, { weekStartsOn: 1 }), 'yyyy-MM-dd')
-      const weekEndDate = format(endOfWeek(date, { weekStartsOn: 1 }), 'yyyy-MM-dd')
+      const year = Number(format(date, 'yyyy'));
+      const quarter = getQuarter(date);
+      const month = getMonth(date);
+      const week = getWeek(date);
+      const weekStartDate = format(startOfWeek(date, { weekStartsOn: 1 }), 'yyyy-MM-dd');
+      const weekEndDate = format(endOfWeek(date, { weekStartsOn: 1 }), 'yyyy-MM-dd');
       return {
         name: `${format(date, 'yyyy年')}第${week}周计划(${month + 1}月)`,
         year,
@@ -182,7 +185,7 @@ export class IssuedService {
         type: 'week',
         startDate: weekStartDate,
         endDate: weekEndDate,
-      }
+      };
     }
   }
   /**
@@ -191,7 +194,7 @@ export class IssuedService {
    * @param userInfo
    */
   async hasRepeat(createIssuedDto: CreateIssuedDto, userInfo: User) {
-    const planTime = this.getNameFromDateAndType(createIssuedDto.currentDate, createIssuedDto.planType)
+    const planTime = this.getNameFromDateAndType(createIssuedDto.currentDate, createIssuedDto.planType);
     try {
       const res = await this.issuedRepository.findOne({
         where: {
@@ -203,11 +206,11 @@ export class IssuedService {
           ...(planTime.week && { week: planTime.week }),
           tenantId: userInfo.tenantId,
         },
-      })
-      return res ? true : false
+      });
+      return res ? true : false;
     } catch (e) {
-      this.loggerService.error(`查询重复计划失败【${e.message}】`, Issued.name)
-      throw new BadRequestException('查询重复计划失败')
+      this.loggerService.error(`查询重复计划失败【${e.message}】`, Issued.name);
+      throw new BadRequestException('查询重复计划失败');
     }
   }
   /**
@@ -255,34 +258,34 @@ export class IssuedService {
       .addGroupBy('i.year')
       .orderBy(`i.${sortField}`, sortOrder)
       .skip((current - 1) * pageSize)
-      .take(pageSize)
+      .take(pageSize);
     const totalQueryBuilder = this.issuedRepository
       .createQueryBuilder('i')
       .select(['COUNT(DISTINCT plan_name) AS rowCount'])
       .where('i.plan_type = :planType', { planType })
       .andWhere('i.tenant_id = :tenantId', { tenantId: userInfo.tenantId })
       .skip((current - 1) * pageSize)
-      .take(pageSize)
+      .take(pageSize);
     if (planType) {
-      queryBuilder.andWhere('i.planType = :planType', { planType })
-      totalQueryBuilder.andWhere('i.planType = :planType', { planType })
+      queryBuilder.andWhere('i.planType = :planType', { planType });
+      totalQueryBuilder.andWhere('i.planType = :planType', { planType });
     }
     if (planName) {
-      queryBuilder.andWhere('i.planName like :planName', { planName: `%${planName}%` })
-      totalQueryBuilder.andWhere('i.planName like :planName', { planName: `%${planName}%` })
+      queryBuilder.andWhere('i.planName like :planName', { planName: `%${planName}%` });
+      totalQueryBuilder.andWhere('i.planName like :planName', { planName: `%${planName}%` });
     }
     try {
-      const list = await queryBuilder.getRawMany()
-      const [total] = await totalQueryBuilder.getRawMany()
+      const list = await queryBuilder.getRawMany();
+      const [total] = await totalQueryBuilder.getRawMany();
       return {
         results: list,
         current,
         pageSize,
         total: Number(total.rowCount),
-      }
+      };
     } catch (e) {
-      this.loggerService.error(`查询计划列表失败【${e.message}】`, Issued.name)
-      throw new BadRequestException('查询计划列表失败')
+      this.loggerService.error(`查询计划列表失败【${e.message}】`, Issued.name);
+      throw new BadRequestException('查询计划列表失败');
     }
   }
 
@@ -305,21 +308,21 @@ export class IssuedService {
       .createQueryBuilder('dept')
       .select(['dept.id as id', 'dept.deptName as deptName'])
       .where('dept.tenantId=:tenantId', { tenantId: userInfo.tenantId })
-      .andWhere('dept.deptType =:deptType', { deptType: DeptTypeEnum.TEAM })
+      .andWhere('dept.deptType =:deptType', { deptType: DeptTypeEnum.TEAM });
     try {
-      const workArea = await workAreaQueryBuilder.getRawMany()
-      let dynamicColumnsResult = ''
+      const workArea = await workAreaQueryBuilder.getRawMany();
+      let dynamicColumnsResult = '';
       workArea.forEach((item) => {
-        dynamicColumnsResult += `MAX(CASE WHEN i.work_area_id= '${item.id}' THEN i.work_area_quantities ELSE 0 END) as '${item.id}',`
-      })
-      const dynamicColumns = dynamicColumnsResult.slice(0, -1)
+        dynamicColumnsResult += `MAX(CASE WHEN i.work_area_id= '${item.id}' THEN i.work_area_quantities ELSE 0 END) as '${item.id}',`;
+      });
+      const dynamicColumns = dynamicColumnsResult.slice(0, -1);
       let countSql = `
         select
         COUNT(DISTINCT i.list_id) as total
         from sc_issued i
         left join sc_list list on list.id = i.list_id
         where i.tenant_id = '${userInfo.tenantId}' and i.plan_name = '${planName}'
-      `
+      `;
       let listSql = `select
         list.list_code as listCode,list.serial_number as serialNumber,list.list_name as listName,
         list.list_characteristic as listCharacteristic,list.unit as unit,list.quantities as quantities,
@@ -327,29 +330,29 @@ export class IssuedService {
         ${dynamicColumns}
         from sc_list list
         left join sc_issued i on i.list_id = list.id
-        where i.tenant_id = '${userInfo.tenantId}' and i.plan_name = '${planName}'`
+        where i.tenant_id = '${userInfo.tenantId}' and i.plan_name = '${planName}'`;
       if (listCode) {
-        listSql += ` and list.list_code = '${listCode}'`
-        countSql += ` and list.list_code = '${listCode}'`
+        listSql += ` and list.list_code = '${listCode}'`;
+        countSql += ` and list.list_code = '${listCode}'`;
       }
       if (listName) {
-        listSql += ` and list.list_name like '%${listName}%'`
-        countSql += ` and list.list_name like '%${listName}%'`
+        listSql += ` and list.list_name like '%${listName}%'`;
+        countSql += ` and list.list_name like '%${listName}%'`;
       }
       if (listCharacteristic) {
-        listSql += ` and list.list_characteristic like '%${listName}%'`
-        countSql += ` and list.list_characteristic like '%${listName}%'`
+        listSql += ` and list.list_characteristic like '%${listName}%'`;
+        countSql += ` and list.list_characteristic like '%${listName}%'`;
       }
       listSql += `
         group by list.list_code,list.serial_number,list.list_name,list.list_characteristic,list.unit,list.quantities,list.id,list.unit_price
         ORDER BY list.${sortField} ${sortOrder}
-        limit ${(current - 1) * pageSize}, ${pageSize}`
-      const list = await this.listRepository.query(listSql)
-      const [total] = await this.issuedRepository.query(countSql)
-      return { results: list, current, pageSize, total: Number(total.total) }
+        limit ${(current - 1) * pageSize}, ${pageSize}`;
+      const list = await this.listRepository.query(listSql);
+      const [total] = await this.issuedRepository.query(countSql);
+      return { results: list, current, pageSize, total: Number(total.total) };
     } catch (e) {
-      this.loggerService.error(`查询计划详情失败【${e.message}】`, Issued.name)
-      throw new BadRequestException('查询计划详情失败')
+      this.loggerService.error(`查询计划详情失败【${e.message}】`, Issued.name);
+      throw new BadRequestException('查询计划详情失败');
     }
   }
 
@@ -369,14 +372,14 @@ export class IssuedService {
           listId: listId,
           tenantId: userInfo.tenantId,
         },
-      })
+      });
       issuedList.forEach((item) => {
-        item.workAreaQuantities = planQuantities[item.workAreaId]
-      })
-      return await this.issuedRepository.save(issuedList)
+        item.workAreaQuantities = planQuantities[item.workAreaId];
+      });
+      return await this.issuedRepository.save(issuedList);
     } catch (e) {
-      this.loggerService.error(`更新计划详情失败【${e.message}】`, Issued.name)
-      throw new BadRequestException('更新计划详情失败')
+      this.loggerService.error(`更新计划详情失败【${e.message}】`, Issued.name);
+      throw new BadRequestException('更新计划详情失败');
     }
   }
 
@@ -395,10 +398,10 @@ export class IssuedService {
         .where('planName = :planName', { planName: planName })
         .andWhere('listId = :listId', { listId: listId })
         .andWhere('tenantId = :tenantId', { tenantId: userInfo.tenantId })
-        .execute()
+        .execute();
     } catch (e) {
-      this.loggerService.error(`删除计划详情失败【${e.message}】`, Issued.name)
-      throw new BadRequestException('删除计划详情失败')
+      this.loggerService.error(`删除计划详情失败【${e.message}】`, Issued.name);
+      throw new BadRequestException('删除计划详情失败');
     }
   }
 
@@ -412,9 +415,9 @@ export class IssuedService {
       const alreadyExist = await this.issuedRepository.findOne({
         where: { planName: planName },
         select: ['planType', 'planName', 'startDate', 'endDate', 'year', 'quarter', 'month', 'week'],
-      })
-      const workAreas = await this.deptService.getWorkArea(userInfo)
-      const data: any[] = []
+      });
+      const workAreas = await this.deptService.getWorkArea(userInfo);
+      const data: any[] = [];
       listIds.forEach((listId) => {
         workAreas.forEach((workArea) => {
           data.push({
@@ -432,13 +435,100 @@ export class IssuedService {
             updateBy: userInfo.userName,
             createDept: userInfo.deptId,
             tenantId: userInfo.tenantId,
-          })
-        })
-      })
-      return await this.issuedRepository.save(data)
+          });
+        });
+      });
+      return await this.issuedRepository.save(data);
     } catch (e) {
-      this.loggerService.error(`添加计划详情失败【${e.message}】`, Issued.name)
-      throw new BadRequestException('添加计划详情失败')
+      this.loggerService.error(`添加计划详情失败【${e.message}】`, Issued.name);
+      throw new BadRequestException('添加计划详情失败');
     }
+  }
+
+  /**
+   * 获取总体计划的列表
+   * @param current 页码
+   * @param pageSize 页面大小
+   * @param sortField 排序字段
+   * @param sortOrder 排序方式
+   * @param listCode 清单编码
+   * @param listName 清单名称
+   * @param listCharacteristic 清单特性
+   * @param sectionalEntry 分部分项
+   * @param userInfo 用户信息
+   * @returns 计划列表
+   */
+  async getMasterPlan(
+    current: number,
+    pageSize: number,
+    sortField: string,
+    sortOrder: Order,
+    listCode: string,
+    listName: string,
+    listCharacteristic: string,
+    sectionalEntry: string,
+    userInfo: User,
+  ) {
+    const allSection = await this.sectionDivisionRepository.find({
+      where: {
+        tenantId: userInfo.tenantId,
+      },
+    });
+    const dynamicColumns = [];
+    allSection.forEach((item) => {
+      dynamicColumns.push(
+        `CAST(SUM(CASE WHEN wpl.work_placeId in (${
+          JSON.parse(item.workPlaceIds)
+            .map((item) => `"${item}"`)
+            .join(',') || '""'
+        }) THEN wpl.all_quantities ELSE 0 END)as DECIMAL(18,2)) as "${item.deptId}"`,
+      );
+    });
+
+    const queryBuilder = this.listRepository
+      .createQueryBuilder('list')
+      .leftJoin(WorkPlaceList, 'wpl', 'wpl.list_id = list.id')
+      .select([
+        'list.serial_number as serialNumber',
+        'list.list_name as listName',
+        'list.unit as unit',
+        'list.list_characteristic as listCharacteristic',
+        'list.list_code as listCode',
+        'list.quantities as quantities',
+        'SUM(wpl.all_quantities) as totalQuantities',
+        ...dynamicColumns,
+      ])
+      .groupBy('list.serial_number')
+      .addGroupBy('list.list_name')
+      .addGroupBy('list.unit')
+      .addGroupBy('list.list_characteristic')
+      .addGroupBy('list.list_code')
+      .addGroupBy('list.quantities')
+      .orderBy(`list.${sortField}`, sortOrder)
+      .offset((current - 1) * pageSize)
+      .limit(pageSize);
+    if (listCode) {
+      queryBuilder.andWhere('list.list_code like :listCode', { listCode: `%${listCode}%` });
+    }
+    if (listName) {
+      queryBuilder.andWhere('list.list_name like :listName', { listName: `%${listName}%` });
+    }
+    if (listCharacteristic) {
+      queryBuilder.andWhere('list.list_characteristic like :listCharacteristic', {
+        listCharacteristic: `%${listCharacteristic}%`,
+      });
+    }
+    if (sectionalEntry) {
+      queryBuilder.andWhere('list.sectionalEntry like :sectionalEntry', {
+        sectionalEntry: `%${sectionalEntry}%`,
+      });
+    }
+    const data = await queryBuilder.getRawMany();
+    return {
+      current,
+      pageSize,
+      results: data,
+      total: await queryBuilder.getCount(),
+    };
   }
 }

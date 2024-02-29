@@ -86,7 +86,7 @@ export class SectionDivisionService {
     }
 
     try {
-      await this.sectionDivisionRepository.manager.transaction(async (manager) => {
+      await this.sectionDivisionRepository.manager.transaction(async () => {
         // const oldSectionDivision = await manager.findOne(SectionDivision, {
         //   where: { id: updateSectionDivisionDto.id, tenantId: userInfo.tenantId },
         // })

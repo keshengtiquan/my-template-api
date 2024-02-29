@@ -1,16 +1,16 @@
-import { Controller, Get, Post, Body, UseInterceptors, Query, DefaultValuePipe, UploadedFile } from '@nestjs/common'
-import { DivisionService } from './division.service'
-import { CreateDivisionDto } from './dto/create-division.dto'
-import { UpdateDivisionDto } from './dto/update-division.dto'
-import { Auth } from '../../sys/auth/decorators/auth.decorators'
-import { Result } from '../../common/result'
-import { UserInfo } from '../../decorators/user.dectorator'
-import { User } from '../../sys/user/entities/user.entity'
-import { UtcToLocalInterceptor } from '../../interceptor/utc2Local.interceptor'
-import { AddListDto } from './dto/add-list.dto'
-import { generateParseIntPipe } from '../../utils'
-import { FileNameEncodePipe } from '../../common/pipe/file-name-encode-pipe'
-import { FileInterceptor } from '@nestjs/platform-express'
+import { Controller, Get, Post, Body, UseInterceptors, Query, DefaultValuePipe, UploadedFile } from '@nestjs/common';
+import { DivisionService } from './division.service';
+import { CreateDivisionDto } from './dto/create-division.dto';
+import { UpdateDivisionDto } from './dto/update-division.dto';
+import { Auth } from '../../sys/auth/decorators/auth.decorators';
+import { Result } from '../../common/result';
+import { UserInfo } from '../../decorators/user.dectorator';
+import { User } from '../../sys/user/entities/user.entity';
+import { UtcToLocalInterceptor } from '../../interceptor/utc2Local.interceptor';
+import { AddListDto } from './dto/add-list.dto';
+import { generateParseIntPipe } from '../../utils';
+import { FileNameEncodePipe } from '../../common/pipe/file-name-encode-pipe';
+import { FileInterceptor } from '@nestjs/platform-express';
 
 @Controller('division')
 export class DivisionController {
@@ -23,7 +23,7 @@ export class DivisionController {
   @Post('/create')
   @Auth()
   async create(@Body() createDivisionDto: CreateDivisionDto, @UserInfo() userInfo: User) {
-    return Result.success(await this.divisionService.create(createDivisionDto, userInfo), '创建成功')
+    return Result.success(await this.divisionService.create(createDivisionDto, userInfo), '创建成功');
   }
 
   /**
@@ -34,7 +34,7 @@ export class DivisionController {
   @UseInterceptors(UtcToLocalInterceptor)
   @Auth()
   async getTree(@UserInfo() userInfo: User) {
-    return Result.success(await this.divisionService.getTree(userInfo), '获取成功')
+    return Result.success(await this.divisionService.getTree(userInfo), '获取成功');
   }
 
   /**
@@ -45,7 +45,7 @@ export class DivisionController {
   @Get('/get')
   @Auth()
   async get(@Query('id') id: string, @UserInfo() userInfo: User) {
-    return Result.success(await this.divisionService.getOne(id, userInfo), '获取成功')
+    return Result.success(await this.divisionService.getOne(id, userInfo), '获取成功');
   }
 
   /**
@@ -56,7 +56,7 @@ export class DivisionController {
   @Post('/update')
   @Auth()
   async update(@Body() updateDivisionDto: UpdateDivisionDto, @UserInfo() userInfo: User) {
-    return Result.success(await this.divisionService.updateById(updateDivisionDto, userInfo), '更新成功')
+    return Result.success(await this.divisionService.updateById(updateDivisionDto, userInfo), '更新成功');
   }
 
   /**
@@ -66,8 +66,8 @@ export class DivisionController {
    */
   @Post('/delete')
   @Auth()
-  async delete(@Body('id') id: string, @Body('isTreeLeaf') isTreeLeaf: boolean, @UserInfo() userInfo: User) {
-    return Result.success(await this.divisionService.deleteById(id, isTreeLeaf), '删除成功')
+  async delete(@Body('id') id: string, @Body('isTreeLeaf') isTreeLeaf: boolean) {
+    return Result.success(await this.divisionService.deleteById(id, isTreeLeaf), '删除成功');
   }
 
   /**
@@ -75,9 +75,9 @@ export class DivisionController {
    * @param addListDto
    */
   @Post('/addList')
-  @Auth()
-  async addList(@Body() addListDto: AddListDto, @UserInfo() userInfo: User) {
-    return Result.success(await this.divisionService.addList(addListDto, userInfo), '添加成功')
+  @Auth('sys:divisionList:add')
+  async addList(@Body() addListDto: AddListDto) {
+    return Result.success(await this.divisionService.addList(addListDto), '添加成功');
   }
 
   /**
@@ -96,18 +96,18 @@ export class DivisionController {
     return Result.success(
       await this.divisionService.getDivisionList(divisionId, current, pageSize, userInfo),
       '获取成功',
-    )
+    );
   }
 
   /**
-   * 批量删除分部分项关联的清单
+   * (删除)批量删除分部分项关联的清单
    * @param ids
    * @param userInfo
    */
   @Post('/deleteDivisionList')
-  @Auth()
+  @Auth('sys:divisionList:delete', 'sys:divisionList:batchDelete')
   async deleteDivisionList(@Body('ids') ids: string[]) {
-    return Result.success(await this.divisionService.deleteDivisionList(ids), '删除成功')
+    return Result.success(await this.divisionService.deleteDivisionList(ids), '删除成功');
   }
 
   /**
@@ -118,7 +118,7 @@ export class DivisionController {
   @Get('/getSectional')
   @Auth()
   async getSectional(@Query('divisionType') divisionType: string, @UserInfo() userInfo: User) {
-    return Result.success(await this.divisionService.getSectional(divisionType, userInfo), '获取成功')
+    return Result.success(await this.divisionService.getSectional(divisionType, userInfo), '获取成功');
   }
 
   /**
@@ -130,16 +130,6 @@ export class DivisionController {
   @Auth()
   @UseInterceptors(FileInterceptor('file'))
   async upload(@UploadedFile(new FileNameEncodePipe()) file: Express.Multer.File, @UserInfo() userInfo: User) {
-    return await this.divisionService.upload(file, userInfo)
-  }
-
-  /**
-   * 导出分部分项
-   * @param userInfo
-   */
-  @Post('/exportDivision')
-  @Auth()
-  async exportDivision(@UserInfo() userInfo: User) {
-    return await this.divisionService.exportDivision(userInfo)
+    return await this.divisionService.upload(file, userInfo);
   }
 }

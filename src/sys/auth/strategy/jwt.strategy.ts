@@ -1,10 +1,10 @@
-import { User } from '../../user/entities/user.entity'
-import { Injectable } from '@nestjs/common'
-import { ConfigService } from '@nestjs/config'
-import { PassportStrategy } from '@nestjs/passport'
-import { InjectRepository } from '@nestjs/typeorm'
-import { ExtractJwt, Strategy } from 'passport-jwt'
-import { Repository } from 'typeorm'
+import { User } from '../../user/entities/user.entity';
+import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { PassportStrategy } from '@nestjs/passport';
+import { InjectRepository } from '@nestjs/typeorm';
+import { ExtractJwt, Strategy } from 'passport-jwt';
+import { Repository } from 'typeorm';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
@@ -15,10 +15,10 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       ignoreExpiration: false,
       //加密的 secret
       secretOrKey: configService.get('jwt_secret'),
-    })
+    });
   }
   @InjectRepository(User)
-  private readonly userRepository: Repository<User>
+  private readonly userRepository: Repository<User>;
 
   async validate({ sub: id }) {
     const user = await this.userRepository.findOne({
@@ -26,10 +26,12 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
         id,
       },
       relations: {
-        roles: true,
+        roles: {
+          permissions: true,
+        },
       },
-    })
-    delete user.password
-    return user
+    });
+    delete user.password;
+    return user;
   }
 }

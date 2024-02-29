@@ -1,48 +1,48 @@
-import { BadRequestException, Inject, Injectable } from '@nestjs/common'
-import { ExcelService } from '../../excel/excel.service'
-import { InjectRepository } from '@nestjs/typeorm'
-import { Excel } from '../../excel/entities/excel.entity'
-import { Repository } from 'typeorm'
-import { List } from './entities/list.entity'
-import { User } from '../../sys/user/entities/user.entity'
-import { Order } from '../../types'
-import { CreateListDto } from './dto/create-list.dto'
-import { UpdateListDto } from './dto/update-list.dto'
-import { ExportFileService, ImportFileService, ManagementGroup } from '../../enmus'
-import { ExportExcel } from '../../excel/entities/export.excel.entity'
-import { WorkPlaceList } from '../workplace/entities/workplace.list.entity'
-import { GanttList } from '../../plan/gantt/entities/gantt-list.entity'
-import { MyLoggerService } from '../../common/my-logger/my-logger.service'
-import { Issued } from '../../plan/issued/entities/issued.entity'
-import { ProjectLogDetail } from '../../project-log/entities/project-log-detail.entity'
-import { Division } from '../division/entities/division.entity'
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { ExcelService } from '../../excel/excel.service';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Excel } from '../../excel/entities/excel.entity';
+import { Repository } from 'typeorm';
+import { List } from './entities/list.entity';
+import { User } from '../../sys/user/entities/user.entity';
+import { Order } from '../../types';
+import { CreateListDto } from './dto/create-list.dto';
+import { UpdateListDto } from './dto/update-list.dto';
+import { ExportFileService, ImportFileService, ManagementGroup } from '../../enmus';
+import { ExportExcel } from '../../excel/entities/export.excel.entity';
+import { WorkPlaceList } from '../workplace/entities/workplace.list.entity';
+import { GanttList } from '../../plan/gantt/entities/gantt-list.entity';
+import { MyLoggerService } from '../../common/my-logger/my-logger.service';
+import { Issued } from '../../plan/issued/entities/issued.entity';
+import { ProjectLogDetail } from '../../project-log/entities/project-log-detail.entity';
+import { Division } from '../division/entities/division.entity';
 
 @Injectable()
 export class ListService {
   @Inject()
-  private readonly excelService: ExcelService
+  private readonly excelService: ExcelService;
   @Inject()
-  private loggerService: MyLoggerService
+  private loggerService: MyLoggerService;
   @InjectRepository(Excel)
-  private excelRepository: Repository<Excel>
+  private excelRepository: Repository<Excel>;
   @InjectRepository(List)
-  private listRepository: Repository<List>
+  private listRepository: Repository<List>;
   @InjectRepository(ExportExcel)
-  private exportExcelRepository: Repository<ExportExcel>
+  private exportExcelRepository: Repository<ExportExcel>;
   @InjectRepository(WorkPlaceList)
-  private workPlaceListRepository: Repository<WorkPlaceList>
+  private workPlaceListRepository: Repository<WorkPlaceList>;
   @InjectRepository(GanttList)
-  private ganttListRepository: Repository<GanttList>
+  private ganttListRepository: Repository<GanttList>;
   @InjectRepository(Issued)
-  private issuedRepository: Repository<Issued>
+  private issuedRepository: Repository<Issued>;
   @InjectRepository(ProjectLogDetail)
-  private projectLogDetailRepository: Repository<ProjectLogDetail>
+  private projectLogDetailRepository: Repository<ProjectLogDetail>;
   @InjectRepository(Division)
-  private divisionRepository: Repository<Division>
+  private divisionRepository: Repository<Division>;
 
   async upload(file: Express.Multer.File, userInfo: User) {
     function conditionCheckFunc(data) {
-      return typeof data.A !== 'number'
+      return typeof data.A !== 'number';
     }
 
     return await this.excelService.excelImport({
@@ -51,7 +51,7 @@ export class ListService {
       serviceName: ImportFileService.PROJECTIMPORT,
       callback: this.create.bind(this),
       conditionCheckFunc: conditionCheckFunc,
-    })
+    });
   }
 
   /**
@@ -80,33 +80,33 @@ export class ListService {
       .orderBy(`list.${sortField}`, sortOrder)
       .where('list.tenantId = :tenantId', {
         tenantId: userInfo.tenantId,
-      })
+      });
     if (listCode) {
-      queryBuilder.where('list.listCode = :listCode', { listCode })
+      queryBuilder.where('list.listCode = :listCode', { listCode });
     }
     if (listName) {
-      queryBuilder.andWhere('list.listName like :listName', { listName: `%${listName}%` })
+      queryBuilder.andWhere('list.listName like :listName', { listName: `%${listName}%` });
     }
     if (listCharacteristic) {
       queryBuilder.andWhere('list.listCharacteristic like :listCharacteristic', {
         listCharacteristic: `%${listCharacteristic}%`,
-      })
+      });
     }
     if (sectionalEntry) {
       queryBuilder.andWhere('list.sectionalEntry like :sectionalEntry', {
         sectionalEntry: `%${sectionalEntry}%`,
-      })
+      });
     }
     try {
-      const [list, total] = await queryBuilder.getManyAndCount()
+      const [list, total] = await queryBuilder.getManyAndCount();
       return {
         results: list,
         current: current,
         pageSize: pageSize,
         total,
-      }
+      };
     } catch (e) {
-      throw new BadRequestException('查询列表失败')
+      throw new BadRequestException('查询列表失败');
     }
   }
 
@@ -118,9 +118,9 @@ export class ListService {
     try {
       return await this.listRepository.findOne({
         where: { id },
-      })
+      });
     } catch (e) {
-      throw new BadRequestException('查询清单失败')
+      throw new BadRequestException('查询清单失败');
     }
   }
 
@@ -130,33 +130,32 @@ export class ListService {
    * @param userInfo
    */
   async create(createListDto: CreateListDto, userInfo: User) {
-    const list = new List()
-    list.serialNumber = createListDto.serialNumber
-    list.listCode = createListDto.listCode
-    list.listName = createListDto.listName
-    list.listCharacteristic = createListDto.listCharacteristic
-    list.quantities = createListDto.quantities
-    list.unitPrice = createListDto.unitPrice
-    list.unit = createListDto.unit
-    list.combinedPrice = createListDto.combinedPrice
-    list.createBy = userInfo.userName
-    list.updateBy = userInfo.userName
-    list.tenantId = userInfo.tenantId
-    list.createDept = userInfo.deptId
-    list.designQuantities = createListDto.quantities
+    const list = new List();
+    list.serialNumber = createListDto.serialNumber;
+    list.listCode = createListDto.listCode;
+    list.listName = createListDto.listName;
+    list.listCharacteristic = createListDto.listCharacteristic;
+    list.quantities = createListDto.quantities;
+    list.unitPrice = createListDto.unitPrice;
+    list.unit = createListDto.unit;
+    list.combinedPrice = createListDto.combinedPrice;
+    list.createBy = userInfo.userName;
+    list.updateBy = userInfo.userName;
+    list.tenantId = userInfo.tenantId;
+    list.createDept = userInfo.deptId;
+    list.designQuantities = createListDto.quantities;
     if (createListDto.currentSection) {
       const division = await this.divisionRepository.findOne({
         where: { divisionName: createListDto.currentSection, tenantId: userInfo.tenantId },
         select: ['id', 'parentNames'],
-      })
-      list.currentSection = division.id
-      list.sectionalEntry = division.parentNames
-      console.log(createListDto.currentSection, division)
+      });
+      list.currentSection = division.id;
+      list.sectionalEntry = division.parentNames;
     }
     try {
-      return await this.listRepository.save(list)
+      return await this.listRepository.save(list);
     } catch (e) {
-      throw new BadRequestException(e.message)
+      throw new BadRequestException(e.message);
     }
   }
 
@@ -180,9 +179,9 @@ export class ListService {
           combinedPrice: updateListDto.combinedPrice,
           updateBy: userInfo.userName,
         },
-      )
+      );
     } catch (e) {
-      throw new BadRequestException('更新清单失败')
+      throw new BadRequestException('更新清单失败');
     }
   }
 
@@ -192,9 +191,9 @@ export class ListService {
    */
   async delete(id: string) {
     try {
-      return await this.listRepository.delete({ id })
+      return await this.listRepository.delete({ id });
     } catch (e) {
-      throw new BadRequestException('删除清单失败')
+      throw new BadRequestException('删除清单失败');
     }
   }
 
@@ -202,7 +201,7 @@ export class ListService {
    * 导出清单
    */
   async export(sectionalEntry: string, userInfo: User) {
-    const tableData = await this.exportListFun(sectionalEntry, userInfo)
+    const tableData = await this.exportListFun(sectionalEntry, userInfo);
     try {
       return await this.excelService.exportExcel(
         {
@@ -219,9 +218,9 @@ export class ListService {
           },
         },
         userInfo,
-      )
+      );
     } catch (e) {
-      throw new BadRequestException('导出清单失败')
+      throw new BadRequestException('导出清单失败');
     }
   }
 
@@ -231,16 +230,16 @@ export class ListService {
       .orderBy(`list.serialNumber`, 'ASC')
       .where('list.tenantId = :tenantId', {
         tenantId: userInfo.tenantId,
-      })
+      });
     if (sectionalEntry) {
       queryBuilder.andWhere('list.sectionalEntry like :sectionalEntry', {
         sectionalEntry: `%${sectionalEntry}%`,
-      })
+      });
     }
     try {
-      return await queryBuilder.getMany()
+      return await queryBuilder.getMany();
     } catch (e) {
-      throw new BadRequestException('查询列表失败')
+      throw new BadRequestException('查询列表失败');
     }
   }
 
@@ -265,29 +264,29 @@ export class ListService {
       .createQueryBuilder('list')
       .skip((current - 1) * pageSize)
       .take(pageSize)
-      .orderBy(`list.${sortField}`, sortOrder)
+      .orderBy(`list.${sortField}`, sortOrder);
     if (userInfo.tenantId !== ManagementGroup.ID) {
       queryBuilder.where('list.tenantId = :tenantId', {
         tenantId: userInfo.tenantId,
-      })
+      });
     }
     try {
       const workPlaceLists = await this.workPlaceListRepository.find({
         where: { workPlaceId, tenantId: userInfo.tenantId },
-      })
-      const ids = workPlaceLists.map((w) => w.listId)
+      });
+      const ids = workPlaceLists.map((w) => w.listId);
       if (ids.length > 0) {
-        queryBuilder.andWhere('list.id NOT IN (:...ids)', { ids })
+        queryBuilder.andWhere('list.id NOT IN (:...ids)', { ids });
       }
-      const [list, total] = await queryBuilder.getManyAndCount()
+      const [list, total] = await queryBuilder.getManyAndCount();
       return {
         results: list,
         current: current,
         pageSize: pageSize,
         total,
-      }
+      };
     } catch (e) {
-      throw new BadRequestException('获取清单失败')
+      throw new BadRequestException('获取清单失败');
     }
   }
 
@@ -313,33 +312,33 @@ export class ListService {
       .skip((current - 1) * pageSize)
       .take(pageSize)
       .orderBy('list.serialNumber', 'ASC')
-      .where('list.sectionalEntry = :sectionalEntry', { sectionalEntry: '' })
+      .where('list.sectionalEntry = :sectionalEntry', { sectionalEntry: '' });
 
     queryBuilder.andWhere('list.tenantId = :tenantId', {
       tenantId: userInfo.tenantId,
-    })
+    });
 
     if (listCode) {
-      queryBuilder.andWhere('list.listCode = :listCode', { listCode })
+      queryBuilder.andWhere('list.listCode = :listCode', { listCode });
     }
     if (listName) {
-      queryBuilder.andWhere('list.listName like :listName', { listName: `%${listName}%` })
+      queryBuilder.andWhere('list.listName like :listName', { listName: `%${listName}%` });
     }
     if (listCharacteristic) {
       queryBuilder.andWhere('list.listCharacteristic like :listCharacteristic', {
         listCharacteristic: `%${listCharacteristic}%`,
-      })
+      });
     }
     try {
-      const [list, total] = await queryBuilder.getManyAndCount()
+      const [list, total] = await queryBuilder.getManyAndCount();
       return {
         results: list,
         current: current,
         pageSize: pageSize,
         total,
-      }
+      };
     } catch (e) {
-      throw new BadRequestException('查询列表失败')
+      throw new BadRequestException('查询列表失败');
     }
   }
 
@@ -373,22 +372,22 @@ export class ListService {
       .orderBy(`list.${sortField}`, sortOrder)
       .where('list.tenantId = :tenantId', {
         tenantId: userInfo.tenantId,
-      })
+      });
     if (listCode) {
-      queryBuilder.andWhere('list.listCode = :listCode', { listCode })
+      queryBuilder.andWhere('list.listCode = :listCode', { listCode });
     }
     if (listName) {
-      queryBuilder.andWhere('list.listName like :listName', { listName: `%${listName}%` })
+      queryBuilder.andWhere('list.listName like :listName', { listName: `%${listName}%` });
     }
     if (listCharacteristic) {
       queryBuilder.andWhere('list.listCharacteristic like :listCharacteristic', {
         listCharacteristic: `%${listCharacteristic}%`,
-      })
+      });
     }
     if (sectionalEntry) {
       queryBuilder.andWhere('list.sectionalEntry like :sectionalEntry', {
         sectionalEntry: `%${sectionalEntry}%`,
-      })
+      });
     }
     try {
       const lists = await this.ganttListRepository.find({
@@ -397,22 +396,21 @@ export class ListService {
           tenantId: userInfo.tenantId,
         },
         select: ['listId'],
-      })
-      const listIds = lists.map((item) => item.listId)
+      });
+      const listIds = lists.map((item) => item.listId);
       if (listIds.length > 0) {
-        queryBuilder.andWhere('list.id NOT IN (:...listIds)', { listIds })
+        queryBuilder.andWhere('list.id NOT IN (:...listIds)', { listIds });
       }
-      const [list, total] = await queryBuilder.getManyAndCount()
+      const [list, total] = await queryBuilder.getManyAndCount();
       return {
         results: list,
         current: current,
         pageSize: pageSize,
         total,
-      }
+      };
     } catch (e) {
-      console.log(e)
-      this.loggerService.error(`获取甘特图排除清单失败${e.message}`, List.name)
-      throw new BadRequestException('获取列表失败')
+      this.loggerService.error(`获取甘特图排除清单失败${e.message}`, List.name);
+      throw new BadRequestException('获取列表失败');
     }
   }
 
@@ -448,9 +446,9 @@ export class ListService {
           tenantId: userInfo.tenantId,
         },
         select: ['listId'],
-      })
+      });
 
-      const listIds = plans.map((item) => item.listId)
+      const listIds = plans.map((item) => item.listId);
       const queryBuilder = this.listRepository
         .createQueryBuilder('list')
         .skip((current - 1) * pageSize)
@@ -459,34 +457,34 @@ export class ListService {
         .where('list.tenantId = :tenantId', {
           tenantId: userInfo.tenantId,
         })
-        .andWhere('list.id NOT IN (:...listIds)', { listIds })
+        .andWhere('list.id NOT IN (:...listIds)', { listIds });
       if (listCode) {
-        queryBuilder.andWhere('list.listCode = :listCode', { listCode })
+        queryBuilder.andWhere('list.listCode = :listCode', { listCode });
       }
       if (listName) {
-        queryBuilder.andWhere('list.listName like :listName', { listName: `%${listName}%` })
+        queryBuilder.andWhere('list.listName like :listName', { listName: `%${listName}%` });
       }
       if (listCharacteristic) {
         queryBuilder.andWhere('list.listCharacteristic like :listCharacteristic', {
           listCharacteristic: `%${listCharacteristic}%`,
-        })
+        });
       }
       if (sectionalEntry) {
         queryBuilder.andWhere('list.sectionalEntry like :sectionalEntry', {
           sectionalEntry: `%${sectionalEntry}%`,
-        })
+        });
       }
-      const [list, total] = await queryBuilder.getManyAndCount()
+      const [list, total] = await queryBuilder.getManyAndCount();
 
       return {
         results: list,
         current,
         total,
         pageSize,
-      }
+      };
     } catch (e) {
-      this.loggerService.error(`获取甘特图排除清单失败${e.message}`, List.name)
-      throw new BadRequestException('获取列表失败')
+      this.loggerService.error(`获取甘特图排除清单失败${e.message}`, List.name);
+      throw new BadRequestException('获取列表失败');
     }
   }
 
@@ -521,9 +519,8 @@ export class ListService {
         tenantId: userInfo.tenantId,
       },
       select: ['listId'],
-    })
-    const listIds = lists.map((item) => item.listId)
-    console.log(listIds)
+    });
+    const listIds = lists.map((item) => item.listId);
     const queryBuilder = this.listRepository
       .createQueryBuilder('list')
       .skip((current - 1) * pageSize)
@@ -531,34 +528,34 @@ export class ListService {
       .orderBy(`list.${sortField}`, sortOrder)
       .where('list.tenantId = :tenantId', {
         tenantId: userInfo.tenantId,
-      })
+      });
     if (listIds.length > 0) {
-      queryBuilder.andWhere('list.id NOT IN (:...listIds)', { listIds })
+      queryBuilder.andWhere('list.id NOT IN (:...listIds)', { listIds });
     }
     if (listCode) {
-      queryBuilder.andWhere('list.listCode = :listCode', { listCode })
+      queryBuilder.andWhere('list.listCode = :listCode', { listCode });
     }
     if (listName) {
-      queryBuilder.andWhere('list.listName like :listName', { listName: `%${listName}%` })
+      queryBuilder.andWhere('list.listName like :listName', { listName: `%${listName}%` });
     }
     if (listCharacteristic) {
       queryBuilder.andWhere('list.listCharacteristic like :listCharacteristic', {
         listCharacteristic: `%${listCharacteristic}%`,
-      })
+      });
     }
     if (sectionalEntry) {
       queryBuilder.andWhere('list.sectionalEntry like :sectionalEntry', {
         sectionalEntry: `%${sectionalEntry}%`,
-      })
+      });
     }
-    const [list, total] = await queryBuilder.getManyAndCount()
+    const [list, total] = await queryBuilder.getManyAndCount();
 
     return {
       results: list,
       current,
       total,
       pageSize,
-    }
+    };
   }
 
   /**
@@ -573,7 +570,7 @@ export class ListService {
         isFocusList: isFocusList,
         updateBy: userInfo.userName,
       },
-    )
+    );
   }
 
   /**
@@ -588,22 +585,19 @@ export class ListService {
     //     tenantId: userInfo.tenantId,
     //   },
     // })
-    // console.log(name)
     // if (name) {
-    //   console.log(579)
     //   return name.listCode
     // }
-    console.log(filed)
     const id = await this.listRepository.findOne({
       where: {
         listCode: filed,
         tenantId: userInfo.tenantId,
       },
-    })
+    });
     if (id) {
-      return id.id
+      return id.id;
     }
-    throw new BadRequestException('请输入正确的名称或ID')
+    throw new BadRequestException('请输入正确的名称或ID');
   }
 
   /**
@@ -618,7 +612,7 @@ export class ListService {
       .from(List)
       .where('id in (:...ids)', { ids })
       .andWhere('tenantId = :tenantId', { tenantId: userInfo.tenantId })
-      .execute()
+      .execute();
   }
 
   /**
@@ -670,32 +664,32 @@ export class ListService {
       .addGroupBy('list.quantities')
       .addGroupBy('list.design_quantities')
       .offset((current - 1) * pageSize)
-      .limit(pageSize)
+      .limit(pageSize);
     if (listCode) {
-      queryBuilder.andWhere('list.list_code like :listCode', { listCode: `%${listCode}%` })
+      queryBuilder.andWhere('list.list_code like :listCode', { listCode: `%${listCode}%` });
     }
     if (listName) {
-      queryBuilder.andWhere('list.list_name like :listName', { listName: `%${listName}%` })
+      queryBuilder.andWhere('list.list_name like :listName', { listName: `%${listName}%` });
     }
     if (listCharacteristic) {
       queryBuilder.andWhere('list.list_characteristic like :listCharacteristic', {
         listCharacteristic: `%${listCharacteristic}%`,
-      })
+      });
     }
     if (sectionalEntry) {
       queryBuilder.andWhere('list.sectionalEntry like :sectionalEntry', {
         sectionalEntry: `%${sectionalEntry}%`,
-      })
+      });
     }
 
-    const data = await queryBuilder.getRawMany()
+    const data = await queryBuilder.getRawMany();
 
     return {
       results: data,
       current,
       pageSize,
       total: await queryBuilder.getCount(),
-    }
+    };
   }
 
   /**
@@ -704,12 +698,11 @@ export class ListService {
    * @param designQuantities
    */
   async updateListCompare(id: string, designQuantities: number) {
-    console.log(id, designQuantities)
     return await this.listRepository.update(
       { id },
       {
         designQuantities,
       },
-    )
+    );
   }
 }

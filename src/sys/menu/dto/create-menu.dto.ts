@@ -6,7 +6,7 @@ export class CreateMenuDto {
   title: string
   @IsOptional()
   icon: string
-  @IsNotEmpty({ message: '路由地址不能为空' })
+  @IsOptional()
   path: string
   @IsOptional()
   component: string

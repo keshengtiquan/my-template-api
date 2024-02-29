@@ -134,4 +134,46 @@ export class IssuedController {
   async addList(@Body('listIds') listIds: string[], @Body('planName') planName: string, @UserInfo() userInfo: User) {
     return Result.success(await this.issuedService.addList(listIds, planName, userInfo), '添加计划详情成功')
   }
+
+  /**
+   * 获取总体计划的列表
+   * @param current 页码
+   * @param pageSize 页面大小
+   * @param sortField 排序字段
+   * @param sortOrder 排序方式
+   * @param listCode 清单编码
+   * @param listName 清单名称
+   * @param listCharacteristic 清单特性
+   * @param sectionalEntry 分部分项
+   * @param userInfo 用户信息
+   * @returns 计划列表
+   */
+  @Get('/getMasterPlan')
+  @Auth()
+  async getMasterPlan(
+    @Query('current', new DefaultValuePipe(1), generateParseIntPipe('current')) current: number,
+    @Query('pageSize', new DefaultValuePipe(10), generateParseIntPipe('pageSize')) pageSize: number,
+    @Query('sortField', new DefaultValuePipe('create_time')) sortField: string,
+    @Query('sortOrder', new DefaultValuePipe('ASC')) sortOrder: Order,
+    @Query('listCode') listCode: string,
+    @Query('listName') listName: string,
+    @Query('listCharacteristic') listCharacteristic: string,
+    @Query('sectionalEntry') sectionalEntry: string,
+    @UserInfo() userInfo: User,
+  ) {
+    return Result.success(
+      await this.issuedService.getMasterPlan(
+        current,
+        pageSize,
+        sortField,
+        sortOrder,
+        listCode,
+        listName,
+        listCharacteristic,
+        sectionalEntry,
+        userInfo,
+      ),
+      '获取主计划成功',
+    )
+  }
 }

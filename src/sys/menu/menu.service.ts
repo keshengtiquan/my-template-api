@@ -17,14 +17,6 @@ export class MenuService {
   private tenantRepository: Repository<Tenant>
 
   async create(createMenuDto: CreateMenuDto, userInfo: User) {
-    const findMenu = await this.menuRepository.findOne({
-      where: {
-        path: createMenuDto.path,
-      },
-    })
-    if (findMenu) {
-      return new BadRequestException('路由地址已存在')
-    }
     const menu = new Menu()
     menu.title = createMenuDto.title
     menu.icon = createMenuDto.icon

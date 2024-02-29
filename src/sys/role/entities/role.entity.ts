@@ -1,11 +1,12 @@
-import { Column, CreateDateColumn, Entity, JoinTable, ManyToMany, PrimaryColumn, UpdateDateColumn } from 'typeorm'
-import { User } from '../../user/entities/user.entity'
-import { Menu } from '../../menu/entities/menu.entity'
+import { Column, CreateDateColumn, Entity, JoinTable, ManyToMany, PrimaryColumn, UpdateDateColumn } from 'typeorm';
+import { User } from '../../user/entities/user.entity';
+import { Menu } from '../../menu/entities/menu.entity';
+import { Permission } from 'src/permission/entities/permission.entity';
 
 @Entity('sys_role')
 export class Role {
   @PrimaryColumn({ comment: '主键', name: 'id', type: 'bigint' })
-  id: string
+  id: string;
 
   @Column({
     type: 'varchar',
@@ -13,7 +14,7 @@ export class Role {
     name: 'tenant_id',
     comment: '租户编号',
   })
-  tenantId: string
+  tenantId: string;
 
   @Column({
     type: 'varchar',
@@ -21,7 +22,7 @@ export class Role {
     name: 'role_name',
     comment: '角色中文名称',
   })
-  roleName: string
+  roleName: string;
 
   @Column({
     type: 'varchar',
@@ -29,10 +30,10 @@ export class Role {
     name: 'role_key',
     comment: '角色英文名称',
   })
-  roleKey: string
+  roleKey: string;
 
   @Column({ type: 'int', name: 'role_sort', comment: '显示顺序' })
-  roleSort: number
+  roleSort: number;
 
   @Column({
     type: 'char',
@@ -41,7 +42,7 @@ export class Role {
     name: 'data_scope',
     comment: '数据范围（1：全部数据权限 2：自定数据权限 3：本部门数据权限 4：本部门及以下数据权限）',
   })
-  dataScope: string
+  dataScope: string;
 
   @Column({
     type: 'char',
@@ -49,13 +50,13 @@ export class Role {
     length: 1,
     comment: '角色状态（0正常 1停用）',
   })
-  status: string
+  status: string;
 
   @Column({ type: 'varchar', length: 500, default: null, comment: '备注' })
-  remark: string
+  remark: string;
 
   @Column({ type: 'varchar', nullable: true, name: 'create_dept' })
-  createDept: string
+  createDept: string;
 
   @JoinTable({
     name: 'sys_user_role',
@@ -63,7 +64,7 @@ export class Role {
     inverseJoinColumns: [{ name: 'user_id' }],
   })
   @ManyToMany(() => User, (user) => user.roles)
-  users: User[]
+  users: User[];
 
   @JoinTable({
     name: 'sys_menu_role',
@@ -71,17 +72,23 @@ export class Role {
     inverseJoinColumns: [{ name: 'menu_id' }],
   })
   @ManyToMany(() => Menu, (menu) => menu.roles)
-  menus: Menu[]
+  menus: Menu[];
+
+  @ManyToMany(() => Permission)
+  @JoinTable({
+    name: 'sys_role_permission',
+  })
+  permissions: Permission[];
 
   @Column({ nullable: true, length: 255, name: 'create_by' })
-  createBy: string
+  createBy: string;
 
   @Column({ nullable: true, length: 255, name: 'update_by' })
-  updateBy: string
+  updateBy: string;
 
   @CreateDateColumn({ name: 'create_time' })
-  createTime: Date
+  createTime: Date;
 
   @UpdateDateColumn({ name: 'update_time' })
-  updateTime: Date
+  updateTime: Date;
 }

@@ -141,7 +141,6 @@ export class ProjectLogService {
         pageSize: pageSize,
       }
     } catch (e) {
-      console.log(e)
       this.loggerService.error(`获取日志列表失败【${e.message}】`, ProjectLog.name)
       throw new BadRequestException('获取日志列表失败')
     }
@@ -182,7 +181,7 @@ export class ProjectLogService {
                         left join sc_list sl on i.list_id = sl.id
                         left join (select list_id, COALESCE(SUM(completion_quantity),0) as com from sc_project_log_detail group by list_id) as t1 on t1.list_id = i.list_id
                         where i.plan_type='week' and i.start_date='${weekStartDate}' and i.end_date='${weekEndDate}' and i.tenant_id='${userInfo.tenantId}'
-                        having if(t1.com < sl.quantities,1,0);`
+                        having if(COALESCE(t1.com, 0) < sl.quantities,1,0);`
       const weekPlanList = await this.issuedRepository.query(finalSql)
       const data = []
 
@@ -244,7 +243,6 @@ export class ProjectLogService {
         pageSize,
       }
     } catch (e) {
-      console.log(e)
       this.loggerService.error(`获取日志详细信息失败【${e.message}】`, ProjectLog.name)
       throw new BadRequestException('获取日志详细信息失败')
     }
