@@ -1,30 +1,29 @@
-import { BadRequestException, Inject, Injectable } from '@nestjs/common'
-import { User } from '../../sys/user/entities/user.entity'
-import { InjectRepository } from '@nestjs/typeorm'
-import { In, Repository } from 'typeorm'
-import { SectionDivision } from './entities/section-division.entity'
-import { Dept } from '../../sys/dept/entities/dept.entity'
-import { Order } from '../../types'
-import { ManagementGroup } from '../../enmus'
-import { UpdateSectionDivisionDto } from './dto/update-section-division.dto'
-import { List } from '../list/entities/list.entity'
-import { WorkPlaceList } from '../workplace/entities/workplace.list.entity'
-import Decimal from 'decimal.js'
-import { WorkPlace, WorkPlaceType } from '../workplace/entities/workplace.entity'
-import { MyLoggerService } from '../../common/my-logger/my-logger.service'
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { User } from '../../sys/user/entities/user.entity';
+import { InjectRepository } from '@nestjs/typeorm';
+import { In, Repository } from 'typeorm';
+import { SectionDivision } from './entities/section-division.entity';
+import { Dept } from '../../sys/dept/entities/dept.entity';
+import { Order } from '../../types';
+import { UpdateSectionDivisionDto } from './dto/update-section-division.dto';
+import { List } from '../list/entities/list.entity';
+import { WorkPlaceList } from '../workplace/entities/workplace.list.entity';
+import Decimal from 'decimal.js';
+import { WorkPlace, WorkPlaceType } from '../workplace/entities/workplace.entity';
+import { MyLoggerService } from '../../common/my-logger/my-logger.service';
 
 @Injectable()
 export class SectionDivisionService {
   @InjectRepository(SectionDivision)
-  private readonly sectionDivisionRepository: Repository<SectionDivision>
+  private readonly sectionDivisionRepository: Repository<SectionDivision>;
   @InjectRepository(List)
-  private readonly listRepository: Repository<List>
+  private readonly listRepository: Repository<List>;
   @InjectRepository(WorkPlaceList)
-  private readonly workPlaceListRepository: Repository<WorkPlaceList>
+  private readonly workPlaceListRepository: Repository<WorkPlaceList>;
   @InjectRepository(WorkPlace)
-  private readonly workPlaceRepository: Repository<WorkPlace>
+  private readonly workPlaceRepository: Repository<WorkPlace>;
   @Inject()
-  private loggerService: MyLoggerService
+  private loggerService: MyLoggerService;
 
   /**
    * 查询列表
@@ -51,24 +50,22 @@ export class SectionDivisionService {
         'sd.workPlaceIds as workPlaceIds',
         'sd.listIds as listIds',
       ])
-      .skip((current - 1) * pageSize)
-      .take(pageSize)
-      .orderBy(`sd.${sortField}`, sortOrder)
-    if (userInfo.tenantId !== ManagementGroup.ID) {
-      queryBuilder.andWhere('sd.tenantId = :tenantId', {
+      .where('sd.tenantId = :tenantId', {
         tenantId: userInfo.tenantId,
       })
-    }
+      .skip((current - 1) * pageSize)
+      .take(pageSize)
+      .orderBy(`sd.${sortField}`, sortOrder);
     try {
-      const list = await queryBuilder.getRawMany()
+      const list = await queryBuilder.getRawMany();
       return {
         results: list,
         current,
         pageSize,
         total: await queryBuilder.getCount(),
-      }
+      };
     } catch (e) {
-      throw new BadRequestException('查询列表失败')
+      throw new BadRequestException('查询列表失败');
     }
   }
 
@@ -79,10 +76,10 @@ export class SectionDivisionService {
    */
   async update(updateSectionDivisionDto: UpdateSectionDivisionDto, userInfo: User) {
     if (updateSectionDivisionDto.listIds.length === 0) {
-      throw new BadRequestException('清单不能为空')
+      throw new BadRequestException('清单不能为空');
     }
     if (updateSectionDivisionDto.workPlaceIds.length === 0) {
-      throw new BadRequestException('工点不能为空')
+      throw new BadRequestException('工点不能为空');
     }
 
     try {
@@ -103,10 +100,10 @@ export class SectionDivisionService {
             workPlaceIds: JSON.stringify(updateSectionDivisionDto.workPlaceIds),
             updateBy: userInfo.userName,
           },
-        )
-      })
+        );
+      });
     } catch (e) {
-      throw new BadRequestException('更新失败')
+      throw new BadRequestException('更新失败');
     }
   }
 
@@ -117,16 +114,16 @@ export class SectionDivisionService {
     try {
       const sectionDivision = await this.sectionDivisionRepository.findOne({
         where: { id: id, tenantId: userInfo.tenantId },
-      })
+      });
       if (!sectionDivision || !sectionDivision.listIds || JSON.parse(sectionDivision.listIds).length === 0) {
         // throw new Error('该区段没有清单')
-        return []
+        return [];
       }
       if (!sectionDivision.workPlaceIds || JSON.parse(sectionDivision.workPlaceIds).length === 0) {
-        return []
+        return [];
       }
-      const listIds = JSON.parse(sectionDivision.listIds)
-      const workPlaceIds = JSON.parse(sectionDivision.workPlaceIds)
+      const listIds = JSON.parse(sectionDivision.listIds);
+      const workPlaceIds = JSON.parse(sectionDivision.workPlaceIds);
 
       const queryBuilder = this.listRepository
         .createQueryBuilder('list')
@@ -153,45 +150,45 @@ export class SectionDivisionService {
         .where('list.id IN (:...listIds)', { listIds })
         .groupBy(
           'list.serial_number, list.id, list.list_name, list.unit,list.unit_price,list.list_characteristic,list.list_code',
-        )
+        );
 
       const list = await queryBuilder
         .skip((current - 1) * pageSize)
         .take(pageSize)
         .orderBy('list.serial_number', 'ASC')
-        .getRawMany()
+        .getRawMany();
       const results = list.map((item: any) => {
-        const { unitPrice } = item
-        let { totalQuantities } = item
+        const { unitPrice } = item;
+        let { totalQuantities } = item;
         if (totalQuantities === null) {
-          totalQuantities = 0
+          totalQuantities = 0;
         }
-        const unitPrice1 = new Decimal(unitPrice)
-        const totalQuantities1 = new Decimal(totalQuantities)
-        const totalPrice = unitPrice1.times(totalQuantities1)
+        const unitPrice1 = new Decimal(unitPrice);
+        const totalQuantities1 = new Decimal(totalQuantities);
+        const totalPrice = unitPrice1.times(totalQuantities1);
         return {
           ...item,
           totalPrice,
-        }
-      })
+        };
+      });
       // 更新产值
       const outputValue = results.reduce((total, item) => {
-        return total + parseFloat(item.totalPrice)
-      }, 0)
+        return total + parseFloat(item.totalPrice);
+      }, 0);
       await this.sectionDivisionRepository.update(id, {
         outputValue: outputValue,
-      })
+      });
       return {
         results: results,
         current,
         pageSize,
         total: await queryBuilder.getCount(),
-      }
+      };
     } catch (e) {
       if (e instanceof Error) {
-        throw new BadRequestException(e.message)
+        throw new BadRequestException(e.message);
       } else {
-        throw new BadRequestException('更新工程量失败')
+        throw new BadRequestException('更新工程量失败');
       }
     }
   }
@@ -210,15 +207,15 @@ export class SectionDivisionService {
             id,
             tenantId: userInfo.tenantId,
           },
-        })
+        });
         if (!JSON.parse(sectionDivision.listIds).includes(listId)) {
-          return
+          return;
         }
-        const newListIds = JSON.parse(sectionDivision.listIds).filter((item: string) => item !== listId)
-        await manager.update(SectionDivision, { id }, { listIds: JSON.stringify(newListIds) })
-      })
+        const newListIds = JSON.parse(sectionDivision.listIds).filter((item: string) => item !== listId);
+        await manager.update(SectionDivision, { id }, { listIds: JSON.stringify(newListIds) });
+      });
     } catch (e) {
-      throw new BadRequestException('删除清单失败')
+      throw new BadRequestException('删除清单失败');
     }
   }
 
@@ -232,22 +229,22 @@ export class SectionDivisionService {
       const res = await this.workPlaceRepository.manager.transaction(async (manager) => {
         const sectionDivision = await this.sectionDivisionRepository.findOne({
           where: { id: id, tenantId: userInfo.tenantId },
-        })
+        });
         if (!sectionDivision || sectionDivision.workPlaceIds === '[]') {
-          return null
+          return null;
         }
-        const workPlaceIds = JSON.parse(sectionDivision.workPlaceIds)
+        const workPlaceIds = JSON.parse(sectionDivision.workPlaceIds);
 
         const workplace = await manager
           .createQueryBuilder()
           .from(WorkPlace, 'wp')
           .where('wp.id IN (:...ids)', { ids: workPlaceIds })
-          .getRawMany()
-        return workplace
-      })
-      return res
+          .getRawMany();
+        return workplace;
+      });
+      return res;
     } catch (e) {
-      throw new BadRequestException('获取工点名称失败')
+      throw new BadRequestException('获取工点名称失败');
     }
   }
 
@@ -267,9 +264,9 @@ export class SectionDivisionService {
           principal: principal,
           updateBy: userInfo.userName,
         },
-      )
+      );
     } catch (e) {
-      throw new BadRequestException('更新责任区段和责任人失败')
+      throw new BadRequestException('更新责任区段和责任人失败');
     }
   }
 
@@ -286,22 +283,22 @@ export class SectionDivisionService {
           tenantId: userInfo.tenantId,
         },
         select: ['listIds', 'workPlaceIds'],
-      })
-      const wpIds: string[] = JSON.parse(sectionDivision.workPlaceIds)
+      });
+      const wpIds: string[] = JSON.parse(sectionDivision.workPlaceIds);
       const workplace = await this.workPlaceRepository.find({
         where: {
           id: In(wpIds),
         },
         select: ['id', 'workPlaceType'],
-      })
+      });
       return {
         listIds: JSON.parse(sectionDivision.listIds),
         stationList: workplace.filter((item) => item.workPlaceType === WorkPlaceType.STATION).map((item) => item.id),
         sectionList: workplace.filter((item) => item.workPlaceType === WorkPlaceType.SECTION).map((item) => item.id),
-      }
+      };
     } catch (e) {
-      this.loggerService.error(`获取区段中的清单id和工点id失败-【${e.message}】`, SectionDivision.name)
-      throw new BadRequestException('获取区段中的清单id和工点id失败')
+      this.loggerService.error(`获取区段中的清单id和工点id失败-【${e.message}】`, SectionDivision.name);
+      throw new BadRequestException('获取区段中的清单id和工点id失败');
     }
   }
 }

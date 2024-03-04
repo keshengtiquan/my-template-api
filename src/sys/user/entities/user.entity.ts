@@ -1,10 +1,10 @@
-import { Column, CreateDateColumn, Entity, JoinTable, ManyToMany, PrimaryColumn, UpdateDateColumn } from 'typeorm'
-import { Role } from '../../role/entities/role.entity'
+import { Column, CreateDateColumn, Entity, JoinTable, ManyToMany, PrimaryColumn, UpdateDateColumn } from 'typeorm';
+import { Role } from '../../role/entities/role.entity';
 
 @Entity('sys_user')
 export class User {
   @PrimaryColumn({ comment: '主键', name: 'id', type: 'bigint' })
-  id: string
+  id: string;
 
   @Column({
     type: 'varchar',
@@ -12,10 +12,10 @@ export class User {
     default: '000000',
     comment: '租户编号',
   })
-  tenantId: string
+  tenantId: string;
 
   @Column({ type: 'varchar', name: 'dept_id', default: null, comment: '部门ID' })
-  deptId: string
+  deptId: string;
 
   @Column({
     type: 'varchar',
@@ -24,7 +24,7 @@ export class User {
     nullable: false,
     comment: '用户账号',
   })
-  userName: string
+  userName: string;
 
   @Column({
     type: 'varchar',
@@ -33,7 +33,7 @@ export class User {
     nullable: true,
     comment: '用户类型',
   })
-  userType: string
+  userType: string;
 
   @Column({
     type: 'varchar',
@@ -42,10 +42,10 @@ export class User {
     nullable: false,
     comment: '用户昵称',
   })
-  nickName: string
+  nickName: string;
 
   @Column({ type: 'varchar', length: 60, default: '', comment: '用户邮箱' })
-  email: string
+  email: string;
 
   @Column({
     type: 'varchar',
@@ -54,7 +54,7 @@ export class User {
     default: '',
     comment: '用户手机号码',
   })
-  phoneNumber: string
+  phoneNumber: string;
 
   @Column({
     type: 'char',
@@ -62,22 +62,22 @@ export class User {
     default: '0',
     comment: '用户性别（0未知 1男 2女）',
   })
-  gender: string
+  gender: string;
 
   @Column({ type: 'varchar', nullable: true, comment: '头像地址' })
-  avatar: string
+  avatar: string;
 
   @Column({ type: 'varchar', length: 100, default: '', comment: '密码' })
-  password: string
+  password: string;
 
   @Column({ type: 'char', default: '0', comment: '帐号状态（0正常 1停用）' })
-  status: string
+  status: string;
 
   @Column({ type: 'varchar', length: '500', default: 'null', comment: '备注' })
-  remark: string
+  remark: string;
 
   @Column({ type: 'varchar', nullable: true, name: 'create_dept' })
-  createDept: string
+  createDept: string;
 
   @JoinTable({
     name: 'sys_user_role',
@@ -85,17 +85,17 @@ export class User {
     inverseJoinColumns: [{ name: 'role_id' }],
   })
   @ManyToMany(() => Role, (role) => role.users)
-  roles: Role[]
+  roles: Role[];
 
   @Column({ nullable: true, length: 255, name: 'create_by' })
-  createBy: string
+  createBy: string;
 
   @Column({ nullable: true, length: 255, name: 'update_by' })
-  updateBy: string
+  updateBy: string;
 
   @CreateDateColumn({ name: 'create_time' })
-  createTime: Date
+  createTime: Date;
 
   @UpdateDateColumn({ name: 'update_time' })
-  updateTime: Date
+  updateTime: Date;
 }

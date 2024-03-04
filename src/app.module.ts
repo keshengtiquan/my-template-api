@@ -27,6 +27,7 @@ import { AnalyseModule } from './analyse/analyse.module';
 import { OnlyofficeModule } from './onlyoffice/onlyoffice.module';
 import { CompletionModule } from './completion/completion.module';
 import { PermissionModule } from './permission/permission.module';
+import { JobteamModule } from './jobteam/jobteam.module';
 import * as path from 'path';
 
 @Module({
@@ -92,6 +93,7 @@ import * as path from 'path';
     OnlyofficeModule,
     CompletionModule,
     PermissionModule,
+    JobteamModule,
   ],
   controllers: [ExcelController],
   providers: [MyLoggerService],

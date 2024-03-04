@@ -1,14 +1,14 @@
-import { Controller, Get, Post, Body, UseInterceptors, Query, DefaultValuePipe } from '@nestjs/common'
-import { GanttService } from './gantt.service'
-import { CreateGanttDto } from './dto/create-gantt.dto'
-import { UpdateGanttDto } from './dto/update-gantt.dto'
-import { Auth } from '../../sys/auth/decorators/auth.decorators'
-import { UserInfo } from '../../decorators/user.dectorator'
-import { User } from '../../sys/user/entities/user.entity'
-import { Result } from '../../common/result'
-import { UtcToLocalInterceptor } from '../../interceptor/utc2Local.interceptor'
-import { generateParseIntPipe } from '../../utils'
-import { Order } from '../../types'
+import { Controller, Get, Post, Body, UseInterceptors, Query, DefaultValuePipe } from '@nestjs/common';
+import { GanttService } from './gantt.service';
+import { CreateGanttDto } from './dto/create-gantt.dto';
+import { UpdateGanttDto } from './dto/update-gantt.dto';
+import { Auth } from '../../sys/auth/decorators/auth.decorators';
+import { UserInfo } from '../../decorators/user.dectorator';
+import { User } from '../../sys/user/entities/user.entity';
+import { Result } from '../../common/result';
+import { UtcToLocalInterceptor } from '../../interceptor/utc2Local.interceptor';
+import { generateParseIntPipe } from '../../utils';
+import { Order } from '../../types';
 
 @Controller('gantt')
 export class GanttController {
@@ -21,7 +21,7 @@ export class GanttController {
   @Post('/create')
   @Auth()
   async create(@Body() createGanttDto: CreateGanttDto, @UserInfo() userInfo: User) {
-    return Result.success(await this.ganttService.create(createGanttDto, userInfo))
+    return Result.success(await this.ganttService.create(createGanttDto, userInfo));
   }
 
   /**
@@ -31,7 +31,7 @@ export class GanttController {
   @Auth()
   @UseInterceptors(UtcToLocalInterceptor)
   async getTree(@UserInfo() userInfo: User) {
-    return Result.success(await this.ganttService.getTree(userInfo))
+    return Result.success(await this.ganttService.getTree(userInfo));
   }
 
   /**
@@ -41,7 +41,7 @@ export class GanttController {
   @Get('/getList')
   @Auth()
   async getAll(@UserInfo() userInfo: User) {
-    return Result.success(await this.ganttService.getAll(userInfo))
+    return Result.success(await this.ganttService.getAll(userInfo));
   }
 
   /**
@@ -52,7 +52,7 @@ export class GanttController {
   @Get('/get')
   @Auth()
   async getOneById(@Query('id') id: string, @UserInfo() userInfo: User) {
-    return Result.success(await this.ganttService.getOneById(id, userInfo))
+    return Result.success(await this.ganttService.getOneById(id, userInfo));
   }
 
   /**
@@ -63,7 +63,7 @@ export class GanttController {
   @Post('/update')
   @Auth()
   async update(@Body() updateGanttDto: UpdateGanttDto, @UserInfo() userInfo: User) {
-    return Result.success(await this.ganttService.update(updateGanttDto, userInfo))
+    return Result.success(await this.ganttService.update(updateGanttDto, userInfo));
   }
 
   /**
@@ -74,7 +74,7 @@ export class GanttController {
   @Post('/delete')
   @Auth()
   async delete(@Body('id') id: string, @UserInfo() userInfo: User) {
-    return Result.success(await this.ganttService.delete(id, userInfo))
+    return Result.success(await this.ganttService.delete(id, userInfo));
   }
 
   /**
@@ -90,7 +90,7 @@ export class GanttController {
     @Body('listIds') listIds: string[],
     @UserInfo() userInfo: User,
   ) {
-    return Result.success(await this.ganttService.relevanceList(ganttId, listIds, userInfo))
+    return Result.success(await this.ganttService.relevanceList(ganttId, listIds, userInfo));
   }
 
   /**
@@ -110,7 +110,7 @@ export class GanttController {
   ) {
     return Result.success(
       await this.ganttService.getRelevanceList(ganttId, current, pageSize, sortField, sortOrder, userInfo),
-    )
+    );
   }
 
   /**
@@ -121,7 +121,7 @@ export class GanttController {
   @Get('/getRelevanceIds')
   @Auth()
   async getRelevanceIds(@Query('id') id: string, @UserInfo() userInfo: User) {
-    return Result.success(await this.ganttService.getRelevanceIds(id, userInfo))
+    return Result.success(await this.ganttService.getRelevanceIds(id, userInfo));
   }
 
   /**
@@ -132,6 +132,6 @@ export class GanttController {
   @Post('/deleteRelevanceList')
   @Auth()
   async deleteRelevanceList(@Body('id') id: string, @UserInfo() userInfo: User) {
-    return Result.success(await this.ganttService.deleteRelevanceList(id, userInfo))
+    return Result.success(await this.ganttService.deleteRelevanceList(id, userInfo));
   }
 }

@@ -1,7 +1,7 @@
 import { Column, CreateDateColumn, Entity, PrimaryColumn, UpdateDateColumn } from 'typeorm';
 
-@Entity('sc_gantt')
-export class Gantt {
+@Entity('sc_job_team')
+export class Jobteam {
   @PrimaryColumn({ comment: '主键', name: 'id', type: 'bigint' })
   id: string;
 
@@ -16,25 +16,14 @@ export class Gantt {
   @Column({ type: 'varchar', nullable: true, name: 'create_dept' })
   createDept: string;
 
-  //字段开始
-  @Column({ type: 'varchar', name: 'text' })
-  text: string;
+  @Column({ comment: '班组名称', name: 'job_team_name', type: 'varchar', length: 50 })
+  groupTeamName: string;
 
-  @Column({ type: 'varchar', name: 'start_date' })
-  startDate: string;
+  @Column({ comment: '班组负责人', name: 'job_team_leader', type: 'varchar', length: 50 })
+  groupTeamLeader: string;
 
-  @Column({ type: 'int', name: 'duration' })
-  duration: number;
-
-  @Column({ type: 'varchar', name: 'end_date' })
-  endDate: string;
-
-  @Column({ type: 'float', name: 'progress', default: 0 })
-  progress: number;
-
-  @Column({ type: 'varchar', name: 'parent' })
-  parent: string;
-  //字段结束
+  @Column({ comment: '所属作业队', name: 'job_id', type: 'varchar', length: 255 })
+  jobId: string;
 
   @Column({ nullable: true, length: 255, name: 'create_by' })
   createBy: string;

@@ -1,13 +1,13 @@
-import { Controller, Get, Post, Body, Query, DefaultValuePipe, UseInterceptors } from '@nestjs/common'
-import { SectionDivisionService } from './section-division.service'
-import { Auth } from '../../sys/auth/decorators/auth.decorators'
-import { generateParseIntPipe } from '../../utils'
-import { Order } from '../../types'
-import { UserInfo } from '../../decorators/user.dectorator'
-import { User } from '../../sys/user/entities/user.entity'
-import { Result } from '../../common/result'
-import { UtcToLocalInterceptor } from '../../interceptor/utc2Local.interceptor'
-import { UpdateSectionDivisionDto } from './dto/update-section-division.dto'
+import { Controller, Get, Post, Body, Query, DefaultValuePipe, UseInterceptors } from '@nestjs/common';
+import { SectionDivisionService } from './section-division.service';
+import { Auth } from '../../sys/auth/decorators/auth.decorators';
+import { generateParseIntPipe } from '../../utils';
+import { Order } from '../../types';
+import { UserInfo } from '../../decorators/user.dectorator';
+import { User } from '../../sys/user/entities/user.entity';
+import { Result } from '../../common/result';
+import { UtcToLocalInterceptor } from '../../interceptor/utc2Local.interceptor';
+import { UpdateSectionDivisionDto } from './dto/update-section-division.dto';
 
 @Controller('sectionDivision')
 export class SectionDivisionController {
@@ -31,7 +31,7 @@ export class SectionDivisionController {
     @Query('sortOrder', new DefaultValuePipe('ASC')) sortOrder: Order,
     @UserInfo() userInfo: User,
   ) {
-    return Result.success(await this.sectionDivisionService.findAll(current, pageSize, sortField, sortOrder, userInfo))
+    return Result.success(await this.sectionDivisionService.findAll(current, pageSize, sortField, sortOrder, userInfo));
   }
 
   /**
@@ -42,7 +42,7 @@ export class SectionDivisionController {
   @Post('/update')
   @Auth()
   async update(@Body() updateSectionDivisionDto: UpdateSectionDivisionDto, @UserInfo() userInfo: User) {
-    return Result.success(await this.sectionDivisionService.update(updateSectionDivisionDto, userInfo))
+    return Result.success(await this.sectionDivisionService.update(updateSectionDivisionDto, userInfo));
   }
 
   /**
@@ -56,7 +56,7 @@ export class SectionDivisionController {
     @Query('id') id: string,
     @UserInfo() userInfo: User,
   ) {
-    return Result.success(await this.sectionDivisionService.getSectionDivisionList(current, pageSize, id, userInfo))
+    return Result.success(await this.sectionDivisionService.getSectionDivisionList(current, pageSize, id, userInfo));
   }
 
   /**
@@ -68,7 +68,7 @@ export class SectionDivisionController {
   @Post('/deleteSectionDivisionList')
   @Auth()
   async deleteSectionDivisionList(@Body('listId') listId: string, @Body('id') id: string, @UserInfo() userInfo: User) {
-    return Result.success(await this.sectionDivisionService.deleteSectionDivisionList(listId, id, userInfo))
+    return Result.success(await this.sectionDivisionService.deleteSectionDivisionList(listId, id, userInfo));
   }
 
   /**
@@ -79,7 +79,7 @@ export class SectionDivisionController {
   @Get('/getSectionDivisionWorkPlaceName')
   @Auth()
   async getSectionDivisionWorkPlaceName(@Query('id') id: string, @UserInfo() userInfo: User) {
-    return Result.success(await this.sectionDivisionService.getSectionDivisionWorkPlaceName(id, userInfo))
+    return Result.success(await this.sectionDivisionService.getSectionDivisionWorkPlaceName(id, userInfo));
   }
 
   /**
@@ -97,7 +97,7 @@ export class SectionDivisionController {
     @Body('principal') principal: string,
     @UserInfo() userInfo: User,
   ) {
-    return Result.success(await this.sectionDivisionService.updateSectorAndPrincipal(id, sector, principal, userInfo))
+    return Result.success(await this.sectionDivisionService.updateSectorAndPrincipal(id, sector, principal, userInfo));
   }
 
   /**
@@ -108,6 +108,6 @@ export class SectionDivisionController {
   @Get('/getListIdsAndWorkplaceIds')
   @Auth()
   async getListsAndWorkplace(@Query('id') id: string, @UserInfo() userInfo: User) {
-    return Result.success(await this.sectionDivisionService.getListsAndWorkplace(id, userInfo))
+    return Result.success(await this.sectionDivisionService.getListsAndWorkplace(id, userInfo));
   }
 }
