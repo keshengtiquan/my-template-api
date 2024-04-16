@@ -11,6 +11,7 @@ export class AuthController {
   @Post('/login')
   @HttpCode(200)
   async login(@Body() loginDto: LoginDto) {
+    console.log(loginDto);
     return Result.success(await this.authService.login(loginDto), '登录成功');
   }
 
