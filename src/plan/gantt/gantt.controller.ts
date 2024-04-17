@@ -21,6 +21,8 @@ export class GanttController {
   @Post('/create')
   @Auth()
   async create(@Body() createGanttDto: CreateGanttDto, @UserInfo() userInfo: User) {
+    console.log(userInfo);
+
     return Result.success(await this.ganttService.create(createGanttDto, userInfo));
   }
 

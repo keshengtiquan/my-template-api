@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { AuthModule } from './sys/auth/auth.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { UserModule } from './sys/user/user.module';
 import { GeneralEntitySubscriber } from './utils/typeorm-event-subscriber';
@@ -72,7 +71,6 @@ import * as path from 'path';
       },
       inject: [ConfigService],
     }),
-    AuthModule,
     UserModule,
     RoleModule,
     PackageModule,
